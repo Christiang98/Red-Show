@@ -72,7 +72,14 @@ export function getCurrentUser(): User | null {
   if (typeof window === "undefined") return null
 
   const userData = localStorage.getItem("userData")
-  return userData ? JSON.parse(userData) : null
+  if (!userData) return null
+
+  try {
+    const parsed = JSON.parse(userData)
+    return parsed.user || parsed
+  } catch {
+    return null
+  }
 }
 
 export function logoutUser(): void {
@@ -80,4 +87,5 @@ export function logoutUser(): void {
 
   localStorage.removeItem("authToken")
   localStorage.removeItem("userData")
+  window.location.href = "/login"
 }

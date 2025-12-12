@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
+import { AppNavbar } from "@/components/navigation/app-navbar"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { BarChart3, Users, BookOpen, MessageSquare, Star, Calendar } from "lucide-react"
+import useSWR from "swr"
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function DashboardPage() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -20,15 +24,27 @@ export default function DashboardPage() {
     }
   }, [router])
 
+  const { data: bookingsData } = useSWR(user ? `/api/bookings?userId=${user.id}` : null, fetcher)
+
+  const { data: messagesData } = useSWR(user ? `/api/messages?userId=${user.id}` : null, fetcher)
+
   if (!user) {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   }
 
+  const totalBookings = bookingsData?.length || 0
+  const unreadMessages = messagesData?.filter((m: any) => !m.read && m.receiver_id === user.id).length || 0
+  const acceptedBookings = bookingsData?.filter((b: any) => b.status === "accepted").length || 0
+
   const stats = [
-    { label: "Contrataciones", value: user.role === "owner" ? 8 : 5, icon: Calendar },
-    { label: "Valoración", value: "4.8", subtext: "⭐", icon: Star },
-    { label: "Mensajes", value: 12, icon: MessageSquare },
-    { label: "Clientes", value: user.role === "owner" ? 24 : "N/A", icon: Users },
+    { label: "Contrataciones", value: totalBookings, icon: Calendar },
+    { label: "Confirmadas", value: acceptedBookings, icon: Star },
+    { label: "Mensajes nuevos", value: unreadMessages, icon: MessageSquare },
+    {
+      label: "Perfil",
+      value: user.role === "owner" ? "Propietario" : user.role === "artist" ? "Artista" : "Organizador",
+      icon: Users,
+    },
   ]
 
   const quickActions = [
@@ -64,10 +80,14 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppNavbar />
+
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2">¡Bienvenido, {user.username}!</h1>
+          <h1 className="text-4xl font-bold text-primary mb-2">
+            ¡Bienvenido, {user.firstName} {user.lastName}!
+          </h1>
           <p className="text-muted-foreground">Gestiona tu perfil y conecta con otros usuarios en Red Show</p>
         </div>
 
@@ -80,10 +100,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-3xl font-bold text-primary mt-2">
-                      {stat.value}
-                      {stat.subtext && <span className="text-xl ml-1">{stat.subtext}</span>}
-                    </p>
+                    <p className="text-3xl font-bold text-primary mt-2">{stat.value}</p>
                   </div>
                   <Icon className="text-secondary opacity-50" size={32} />
                 </div>
@@ -117,43 +134,51 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity - Últimas contrataciones */}
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-primary mb-6">Actividad Reciente</h2>
           <Card className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 pb-4 border-b">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="text-blue-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-semibold">Nueva contratación confirmada</p>
-                  <p className="text-sm text-muted-foreground">
-                    Se confirmó la reserva con DJ Phoenix para el 20 de diciembre
-                  </p>
-                </div>
+            {bookingsData && bookingsData.length > 0 ? (
+              <div className="space-y-4">
+                {bookingsData.slice(0, 3).map((booking: any) => (
+                  <div key={booking.id} className="flex items-center gap-4 pb-4 border-b last:border-b-0">
+                    <div
+                      className={`w-12 h-12 ${
+                        booking.status === "accepted"
+                          ? "bg-green-100"
+                          : booking.status === "pending"
+                            ? "bg-yellow-100"
+                            : "bg-red-100"
+                      } rounded-lg flex items-center justify-center`}
+                    >
+                      <Calendar
+                        className={`${
+                          booking.status === "accepted"
+                            ? "text-green-600"
+                            : booking.status === "pending"
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                        }`}
+                        size={24}
+                      />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{booking.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Estado:{" "}
+                        {booking.status === "pending"
+                          ? "Pendiente"
+                          : booking.status === "accepted"
+                            ? "Aceptada"
+                            : "Rechazada"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-4 pb-4 border-b">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <MessageSquare className="text-green-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-semibold">Nuevo mensaje de La Sala del Tango</p>
-                  <p className="text-sm text-muted-foreground">Te respondieron sobre tu consulta de disponibilidad</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Star className="text-purple-600" size={24} />
-                </div>
-                <div>
-                  <p className="font-semibold">Recibiste una nueva reseña</p>
-                  <p className="text-sm text-muted-foreground">
-                    Juan García te dio 5 estrellas después de tu último evento
-                  </p>
-                </div>
-              </div>
-            </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No hay actividad reciente. ¡Empieza a explorar!</p>
+            )}
           </Card>
         </div>
       </main>

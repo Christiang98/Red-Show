@@ -2,73 +2,12 @@
 
 import { useState, useMemo } from "react"
 import { ProtectedRoute } from "@/components/protectedRoute"
+import { AppNavbar } from "@/components/navigation/app-navbar"
 import { SearchFilters as SearchFiltersComponent } from "@/components/search/search-filters"
 import { ResultCard } from "@/components/search/result-card"
 import { Card } from "@/components/ui/card"
-
-// Mock data - en producción vendría de la API
-const mockResults = [
-  {
-    id: "1",
-    type: "owner" as const,
-    name: "La Sala del Tango",
-    category: "Salón de Eventos",
-    location: "Buenos Aires, San Telmo",
-    rating: 4.8,
-    image: "/hair-salon-interior.png",
-    description: "Espacio moderno de 300 personas con servicios completos para eventos",
-  },
-  {
-    id: "2",
-    type: "artist" as const,
-    name: "DJ Phoenix",
-    category: "DJ - Música Electrónica",
-    location: "Buenos Aires",
-    rating: 4.9,
-    image: "/dj-at-turntables.png",
-    description: "Especialista en electrónica y house con 8 años de experiencia",
-  },
-  {
-    id: "3",
-    type: "owner" as const,
-    name: "Garden Party Venue",
-    category: "Jardín para Eventos",
-    location: "Buenos Aires, Flores",
-    rating: 4.7,
-    image: "/jardin.jpg",
-    description: "Espacio natural perfecto para bodas y celebraciones al aire libre",
-  },
-  {
-    id: "4",
-    type: "artist" as const,
-    name: "Fotógrafos Creatives",
-    category: "Fotografía Profesional",
-    location: "Buenos Aires",
-    rating: 4.9,
-    image: "/fotografia.jpg",
-    description: "Cobertura completa de eventos con edición digital profesional",
-  },
-  {
-    id: "5",
-    type: "owner" as const,
-    name: "La Estancia Restaurante",
-    category: "Restaurante - Catering",
-    location: "Buenos Aires, Recoleta",
-    rating: 4.6,
-    image: "/cozy-italian-restaurant.png",
-    description: "Menús variados con opciones gourmet para eventos corporativos",
-  },
-  {
-    id: "6",
-    type: "artist" as const,
-    name: "Banda Folklore",
-    category: "Banda Musical",
-    location: "Buenos Aires",
-    rating: 4.5,
-    image: "/banda.jpg",
-    description: "Música tradicional argentina para eventos y celebraciones",
-  },
-]
+import { Spinner } from "@/components/ui/spinner"
+import useSWR from "swr"
 
 interface Filters {
   query: string
@@ -76,6 +15,8 @@ interface Filters {
   eventType: string
   serviceCategory: string
 }
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function SearchPage() {
   const [filters, setFilters] = useState<Filters>({
@@ -85,33 +26,59 @@ export default function SearchPage() {
     serviceCategory: "",
   })
 
-  // Filtrar resultados basado en los filtros
+  const { data: results, error } = useSWR(
+    `/api/search?${new URLSearchParams({
+      query: filters.query,
+      location: filters.location,
+      category: filters.serviceCategory,
+    }).toString()}`,
+    fetcher,
+  )
+
   const filteredResults = useMemo(() => {
-    return mockResults.filter((result) => {
-      const matchesQuery =
-        filters.query === "" ||
-        result.name.toLowerCase().includes(filters.query.toLowerCase()) ||
-        result.category.toLowerCase().includes(filters.query.toLowerCase()) ||
-        result.description.toLowerCase().includes(filters.query.toLowerCase())
+    if (!results || !Array.isArray(results)) return []
 
-      const matchesLocation =
-        filters.location === "" || result.location.toLowerCase().includes(filters.location.toLowerCase())
+    return results.filter((result: any) => {
+      // Si no hay filtro de categoría, mostrar todos
+      if (!filters.serviceCategory || filters.serviceCategory === "") {
+        return true
+      }
 
-      const matchesServiceCategory =
-        filters.serviceCategory === "" ||
-        (filters.serviceCategory === "space" && result.type === "owner") ||
-        (filters.serviceCategory === "music" &&
-          (result.category.includes("DJ") || result.category.includes("Banda"))) ||
-        (filters.serviceCategory === "photography" && result.category.includes("Fotogr")) ||
-        (filters.serviceCategory === "catering" && result.category.includes("Restaurante"))
+      // Filtrar por categoría
+      if (filters.serviceCategory === "space") {
+        return result.role === "owner" || result.type === "owner"
+      }
 
-      return matchesQuery && matchesLocation && matchesServiceCategory
+      if (filters.serviceCategory === "music") {
+        return (
+          result.category?.toLowerCase().includes("dj") ||
+          result.category?.toLowerCase().includes("banda") ||
+          result.category?.toLowerCase().includes("musician") ||
+          result.category?.toLowerCase().includes("música")
+        )
+      }
+
+      if (filters.serviceCategory === "photography") {
+        return (
+          result.category?.toLowerCase().includes("photograph") || result.category?.toLowerCase().includes("fotograf")
+        )
+      }
+
+      if (filters.serviceCategory === "catering") {
+        return (
+          result.category?.toLowerCase().includes("gastronom") || result.category?.toLowerCase().includes("catering")
+        )
+      }
+
+      return true
     })
-  }, [filters])
+  }, [results, filters.serviceCategory])
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
+        <AppNavbar />
+
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary text-primary-foreground py-8 px-4">
           <div className="max-w-7xl mx-auto">
@@ -125,14 +92,32 @@ export default function SearchPage() {
           <SearchFiltersComponent onFiltersChange={setFilters} />
 
           {/* Resultados */}
-          {filteredResults.length > 0 ? (
+          {error ? (
+            <Card className="p-12 text-center">
+              <p className="text-destructive">Error cargando resultados. Intenta nuevamente.</p>
+            </Card>
+          ) : !results ? (
+            <div className="flex items-center justify-center py-12">
+              <Spinner className="h-8 w-8" />
+            </div>
+          ) : filteredResults.length > 0 ? (
             <div>
               <p className="text-sm text-muted-foreground mb-6">
                 Mostrando <span className="font-semibold">{filteredResults.length}</span> resultados
               </p>
               <div className="space-y-4">
-                {filteredResults.map((result) => (
-                  <ResultCard key={result.id} {...result} />
+                {filteredResults.map((result: any) => (
+                  <ResultCard
+                    key={result.id}
+                    id={result.id}
+                    type={result.role === "owner" ? "owner" : "artist"}
+                    name={result.name}
+                    category={result.category || "Sin categoría"}
+                    location={result.location || "Sin ubicación"}
+                    rating={result.rating || 0}
+                    image={result.avatar_url || result.image || "/placeholder.svg"}
+                    description={result.bio || result.description || "Sin descripción"}
+                  />
                 ))}
               </div>
             </div>

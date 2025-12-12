@@ -21,30 +21,38 @@ export function LoginForm() {
     setLoading(true)
 
     try {
+      console.log("[v0] Iniciando login con email:", email)
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       })
 
+      console.log("[v0] Response status:", response.status)
+
       if (!response.ok) {
         const data = await response.json()
+        console.log("[v0] Error response:", data)
         throw new Error(data.error || "Error al iniciar sesión")
       }
 
       const data = await response.json()
+      console.log("[v0] Login exitoso:", data.user)
 
       // Guardar datos en localStorage
       localStorage.setItem("authToken", data.token)
       localStorage.setItem("userData", JSON.stringify(data.user))
 
-      console.log("[v0] Login exitoso:", data.user)
-
-      // Redirigir al dashboard
-      router.push("/dashboard")
+      if (data.user.role === "admin") {
+        router.push("/admin")
+      } else {
+        router.push("/dashboard")
+      }
     } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión")
-      console.error("[v0] Error en login:", err)
+      const errorMessage = err.message || "Error al iniciar sesión"
+      setError(errorMessage)
+      console.error("[v0] Error en login:", errorMessage)
     } finally {
       setLoading(false)
     }

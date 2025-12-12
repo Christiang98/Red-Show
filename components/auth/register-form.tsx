@@ -7,6 +7,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { PasswordStrengthIndicator } from "@/components/auth/password-strength-indicator"
+import { validatePassword } from "@/lib/password-validator"
 
 type UserRole = "owner" | "artist" | "organizer"
 
@@ -41,6 +43,14 @@ export function RegisterForm() {
     e.preventDefault()
     setError("")
 
+    const passwordValidation = validatePassword(formData.password)
+    if (!passwordValidation.isValid) {
+      setError(
+        "La contraseña no cumple los requisitos de seguridad. Debe tener al menos 8 caracteres y cumplir con al menos 4 de los 5 requisitos mostrados.",
+      )
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Las contraseñas no coinciden")
       return
@@ -49,6 +59,8 @@ export function RegisterForm() {
     setLoading(true)
 
     try {
+      console.log("[v0] Iniciando registro con email:", formData.email)
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,8 +70,11 @@ export function RegisterForm() {
         }),
       })
 
+      console.log("[v0] Response status:", response.status)
+
       if (!response.ok) {
         const data = await response.json()
+        console.log("[v0] Error response:", data)
         throw new Error(data.error || "Error al registrarse")
       }
 
@@ -72,8 +87,9 @@ export function RegisterForm() {
         router.push("/login")
       }, 2000)
     } catch (err: any) {
-      setError(err.message || "Error al registrarse")
-      console.error("[v0] Error en registro:", err)
+      const errorMessage = err.message || "Error al registrarse"
+      setError(errorMessage)
+      console.error("[v0] Error en registro:", errorMessage)
     } finally {
       setLoading(false)
     }
@@ -188,6 +204,7 @@ export function RegisterForm() {
                 placeholder="••••••••"
                 required
               />
+              <PasswordStrengthIndicator password={formData.password} />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Confirmar Contraseña</label>

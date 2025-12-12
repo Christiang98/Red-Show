@@ -1,48 +1,39 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import useSWR from "swr"
 
 interface Message {
-  id: string
-  sender: string
+  id: string | number
+  sender_id: number
+  receiver_id: number
   content: string
-  timestamp: Date
-  isOwn: boolean
+  created_at: string
+  read: boolean
 }
 
 interface ChatWindowProps {
   conversationWith: string
   currentUser: string
+  receiverId: number
+  senderId: number
+  onMessageSent?: () => void
 }
 
-export function ChatWindow({ conversationWith, currentUser }: ChatWindowProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      sender: "DJ Phoenix",
-      content: "Hola! Vi tu solicitud. Estoy disponible para el 20 de diciembre.",
-      timestamp: new Date("2024-11-10T14:30:00"),
-      isOwn: false,
-    },
-    {
-      id: "2",
-      sender: currentUser,
-      content: "Perfecto! Necesitamos música electrónica. ¿Cuál es tu tarifa?",
-      timestamp: new Date("2024-11-10T14:35:00"),
-      isOwn: true,
-    },
-    {
-      id: "3",
-      sender: "DJ Phoenix",
-      content: "Mi tarifa es $5000 por 4 horas. ¿Te interesa?",
-      timestamp: new Date("2024-11-10T14:40:00"),
-      isOwn: false,
-    },
-  ])
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
+export function ChatWindow({ conversationWith, currentUser, receiverId, senderId, onMessageSent }: ChatWindowProps) {
+  const { data: allMessages, mutate } = useSWR(`/api/messages?userId=${senderId}`, fetcher)
+
+  const messages =
+    allMessages?.filter(
+      (m: Message) =>
+        (m.sender_id === senderId && m.receiver_id === receiverId) ||
+        (m.sender_id === receiverId && m.receiver_id === senderId),
+    ) || []
 
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -56,22 +47,32 @@ export function ChatWindow({ conversationWith, currentUser }: ChatWindowProps) {
     scrollToBottom()
   }, [messages])
 
-  const handleSend = () => {
-    if (!newMessage.trim()) return
+  const handleSend = async () => {
+    if (!newMessage.trim() || isLoading) return
 
-    const message: Message = {
-      id: Math.random().toString(),
-      sender: currentUser,
-      content: newMessage,
-      timestamp: new Date(),
-      isOwn: true,
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderId,
+          receiverId,
+          content: newMessage,
+        }),
+      })
+
+      if (response.ok) {
+        setNewMessage("")
+        mutate()
+        onMessageSent?.()
+      }
+    } catch (error) {
+      console.error("[v0] Error enviando mensaje:", error)
+    } finally {
+      setIsLoading(false)
     }
-
-    setMessages((prev) => [...prev, message])
-    setNewMessage("")
-    setIsLoading(false)
-
-    console.log("[v0] Mensaje enviado:", message)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -83,34 +84,40 @@ export function ChatWindow({ conversationWith, currentUser }: ChatWindowProps) {
 
   return (
     <Card className="flex flex-col h-screen max-h-screen">
-      {/* Header */}
       <div className="border-b border-border p-4 bg-card">
         <h2 className="font-semibold text-foreground">{conversationWith}</h2>
         <p className="text-xs text-muted-foreground">Conversación activa</p>
       </div>
 
-      {/* Mensajes */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div key={message.id} className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg ${
-                message.isOwn
-                  ? "bg-primary text-primary-foreground rounded-br-none"
-                  : "bg-muted text-foreground rounded-bl-none"
-              }`}
-            >
-              <p className="text-sm">{message.content}</p>
-              <p className={`text-xs mt-1 ${message.isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                {message.timestamp.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            </div>
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">No hay mensajes aún. Inicia la conversación.</p>
           </div>
-        ))}
+        ) : (
+          messages.map((message: Message) => {
+            const isOwn = message.sender_id === senderId
+            return (
+              <div key={message.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg ${
+                    isOwn
+                      ? "bg-primary text-primary-foreground rounded-br-none"
+                      : "bg-muted text-foreground rounded-bl-none"
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                  <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {new Date(message.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            )
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="border-t border-border p-4 bg-card">
         <div className="flex gap-2">
           <textarea
@@ -119,14 +126,15 @@ export function ChatWindow({ conversationWith, currentUser }: ChatWindowProps) {
             onKeyPress={handleKeyPress}
             placeholder="Escribe tu mensaje..."
             rows={2}
-            className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            disabled={isLoading}
+            className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none disabled:opacity-50"
           />
           <Button
             onClick={handleSend}
             disabled={!newMessage.trim() || isLoading}
             className="bg-secondary hover:bg-secondary/90"
           >
-            Enviar
+            {isLoading ? "..." : "Enviar"}
           </Button>
         </div>
       </div>

@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import type { User } from "@/lib/auth"
 
-const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || "http://localhost:8000/api"
+const API_URL = "/api"
 
 interface AuthResponse {
   user: User
@@ -31,7 +31,7 @@ export function useAuth() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${DJANGO_API_URL}/auth/login/`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +62,7 @@ export function useAuth() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${DJANGO_API_URL}/auth/register/`, {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -3,7 +3,6 @@ import { Poppins } from "next/font/google"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-import { AppNavbar } from "@/components/navigation/app-navbar"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -25,7 +24,6 @@ export default function RootLayout({
   return (
     <html lang="es" className={poppins.variable}>
       <body className="font-sans antialiased bg-background">
-        <AppNavbar />
         <main className="min-h-screen">{children}</main>
         <Analytics />
       </body>

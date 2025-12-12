@@ -2,8 +2,21 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { getCurrentUser } from "@/lib/auth"
+import { useRouter } from "next/navigation"
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [router])
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-background via-background to-muted">
       {/* Navigation */}
