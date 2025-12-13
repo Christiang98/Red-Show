@@ -61,6 +61,15 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
     }
   }
 
+  const isVerified = () => {
+    if (!data.verified) return false
+    if (data.verified === 0 || data.verified === "0") return false
+    if (data.verified === false || data.verified === "false") return false
+    if (data.verified === null || data.verified === undefined) return false
+    if (data.verified === "") return false
+    return true
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4 py-4">
@@ -89,7 +98,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                 alt={data.businessName || data.artistName}
                 className="w-32 h-32 rounded-2xl border-4 border-background shadow-xl object-cover"
               />
-              {data.verified && (
+              {isVerified() && (
                 <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-2">
                   <Star className="h-5 w-5 fill-current" />
                 </div>

@@ -1,6 +1,7 @@
 import sqlite3 from "sqlite3"
 import path from "path"
 import fs from "fs"
+import crypto from "crypto"
 
 const dataDir = path.join(process.cwd(), "data")
 if (!fs.existsSync(dataDir)) {
@@ -74,6 +75,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               last_name VARCHAR(100),
               role VARCHAR(20) CHECK (role IN ('owner', 'artist', 'organizer', 'admin')),
               phone VARCHAR(20),
+              is_admin BOOLEAN DEFAULT 0,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -169,7 +171,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               title VARCHAR(255),
               description TEXT,
               booking_date DATETIME,
-              status VARCHAR(20) CHECK (status IN ('pending', 'accepted', 'rejected', 'completed')) DEFAULT 'pending',
+              status VARCHAR(20) CHECK (status IN ('pending', 'accepted', 'rejected', 'completed', 'cancelled')) DEFAULT 'pending',
               price DECIMAL(10,2),
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -215,6 +217,34 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS reports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              reporter_id INTEGER NOT NULL,
+              reported_user_id INTEGER NOT NULL,
+              reason VARCHAR(100) NOT NULL,
+              description TEXT,
+              status VARCHAR(20) CHECK (status IN ('pending', 'under_review', 'resolved', 'dismissed')) DEFAULT 'pending',
+              admin_notes TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+              FOREIGN KEY (reported_user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS support_tickets (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              subject VARCHAR(255) NOT NULL,
+              category VARCHAR(100) NOT NULL,
+              message TEXT NOT NULL,
+              priority VARCHAR(20) CHECK (priority IN ('low', 'normal', 'medium', 'high', 'urgent')) DEFAULT 'normal',
+              status VARCHAR(20) CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
+              admin_response TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
             CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
             CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);
             CREATE INDEX IF NOT EXISTS idx_owner_profiles_user ON owner_profiles(user_id);
@@ -235,20 +265,71 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
 
           await execAsync(newDb, schema)
 
+          const correctHash = crypto
+            .createHash("sha256")
+            .update("Redshow" + "default")
+            .digest("hex")
+
+          console.log("[v0] Hash calculado para 'Redshow':", correctHash)
+          console.log("[v0] Verificando usuario administrador...")
+
+          const adminExists = await getAsync(newDb, "SELECT id, email, password FROM users WHERE email = ?", [
+            "cgarcia@pioix.edu.ar",
+          ])
+
+          if (!adminExists) {
+            console.log("[v0] Creando usuario administrador...")
+            console.log("[v0] Email: cgarcia@pioix.edu.ar")
+            console.log("[v0] Contraseña: Redshow")
+            console.log("[v0] Hash: ", correctHash)
+
+            const adminInsert = await runAsync(
+              newDb,
+              `INSERT INTO users (email, password, first_name, last_name, role, phone, is_admin, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+              ["cgarcia@pioix.edu.ar", correctHash, "Cristian", "García", "admin", "+54 11 1234-5678", 1],
+            )
+
+            await runAsync(
+              newDb,
+              `INSERT INTO profiles (user_id, bio, location, verified, created_at)
+               VALUES (?, ?, ?, ?, datetime('now'))`,
+              [adminInsert.id, "Administrador del sistema Red Show", "Buenos Aires, Argentina", 1],
+            )
+
+            console.log("[v0] ✅ Usuario administrador creado exitosamente")
+          } else {
+            console.log("[v0] Usuario administrador encontrado:", adminExists.email)
+            console.log("[v0] Hash actual en DB:", adminExists.password)
+            console.log("[v0] Hash esperado:", correctHash)
+
+            if (adminExists.password !== correctHash) {
+              console.log("[v0] ⚠️ Hash incorrecto, actualizando...")
+              await runAsync(newDb, `UPDATE users SET password = ?, is_admin = 1 WHERE email = ?`, [
+                correctHash,
+                "cgarcia@pioix.edu.ar",
+              ])
+              console.log("[v0] ✅ Contraseña del administrador actualizada correctamente")
+            } else {
+              console.log("[v0] ✅ Hash correcto, no se requiere actualización")
+              await runAsync(newDb, `UPDATE users SET is_admin = 1 WHERE email = ?`, ["cgarcia@pioix.edu.ar"])
+            }
+          }
+
           db = newDb
           initialized = true
-          console.log("[v0] Base de datos SQLite inicializada correctamente")
+          console.log("[v0] ✅ Base de datos SQLite inicializada correctamente")
           console.log(
-            "[v0] Tablas creadas: users, profiles, owner_profiles, artist_profiles, events, bookings, messages, reviews, notifications",
+            "[v0] Tablas creadas: users, profiles, owner_profiles, artist_profiles, events, bookings, messages, reviews, notifications, reports, support_tickets",
           )
           resolve()
         } catch (initError) {
-          console.error("[v0] Error inicializando schema:", initError)
+          console.error("[v0] ❌ Error inicializando schema:", initError)
           reject(initError)
         }
       })
     } catch (error) {
-      console.error("[v0] Error creando base de datos:", error)
+      console.error("[v0] ❌ Error creando base de datos:", error)
       reject(error)
     }
   })

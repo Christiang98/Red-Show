@@ -66,7 +66,7 @@ export function LoginForm() {
           <p className="text-muted-foreground">Inicia sesión en tu cuenta</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive rounded-lg text-destructive text-sm">
               {error}
@@ -77,9 +77,11 @@ export function LoginForm() {
             <label className="block text-sm font-medium text-foreground mb-2">Email</label>
             <Input
               type="email"
+              name="email-redshow"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
+              autoComplete="off"
               required
             />
           </div>
@@ -88,9 +90,11 @@ export function LoginForm() {
             <label className="block text-sm font-medium text-foreground mb-2">Contraseña</label>
             <Input
               type="password"
+              name="password-redshow"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="new-password"
               required
             />
           </div>

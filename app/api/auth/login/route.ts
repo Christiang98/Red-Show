@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = await request.json()
     console.log("[v0] Login con email:", email)
+    console.log("[v0] Password recibido:", password)
 
     const user = await getAsync("SELECT * FROM users WHERE email = ?", [email])
     if (!user) {
@@ -16,7 +17,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
     }
 
+    console.log("[v0] Usuario encontrado:", user.email, "Role:", user.role)
+    console.log("[v0] Hash almacenado:", user.password)
+
     const isValid = await verifyPassword(password, user.password)
+    console.log("[v0] Validación de contraseña:", isValid)
+
     if (!isValid) {
       console.log("[v0] Contraseña incorrecta para:", email)
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })

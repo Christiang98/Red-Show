@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, logoutUser } from "@/lib/auth"
-import { Menu, X, MessageSquare, Bell, User, HelpCircle } from "lucide-react"
+import { Menu, X, MessageSquare, Bell, User, HelpCircle, Shield } from "lucide-react"
 import useSWR from "swr"
 import {
   DropdownMenu,
@@ -43,9 +43,12 @@ export function AppNavbar() {
   if (!user) return null
 
   const profileEditLink = user.role === "owner" ? "/profile/owner" : "/profile/artist"
+  const isAdmin = user.role === "admin" || user.is_admin
 
   return (
-    <nav className="bg-primary text-primary-foreground sticky top-0 z-50 shadow-md">
+    <nav
+      className={`${isAdmin ? "bg-gradient-to-r from-purple-700 via-primary to-purple-700" : "bg-primary"} text-primary-foreground sticky top-0 z-50 shadow-md`}
+    >
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
@@ -54,21 +57,43 @@ export function AppNavbar() {
               <span className="text-primary font-bold">R</span>
             </div>
             <span>Red Show</span>
+            {isAdmin && (
+              <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-black text-xs font-bold rounded-full">ADMIN</span>
+            )}
           </Link>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/search" className="hover:text-secondary transition">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-3 py-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground font-semibold rounded-lg transition"
+              >
+                <Shield size={18} />
+                <span>Gestiones Administrador</span>
+              </Link>
+            )}
+
+            <Link href="/search" className="px-3 py-2 hover:bg-primary-foreground/10 rounded-lg transition font-medium">
               Buscar
             </Link>
-            <Link href="/bookings" className="hover:text-secondary transition">
+            <Link
+              href="/bookings"
+              className="px-3 py-2 hover:bg-primary-foreground/10 rounded-lg transition font-medium"
+            >
               Contrataciones
             </Link>
-            <Link href="/messaging" className="hover:text-secondary transition flex items-center gap-1">
+            <Link
+              href="/messaging"
+              className="px-3 py-2 hover:bg-primary-foreground/10 rounded-lg transition flex items-center gap-1 font-medium"
+            >
               <MessageSquare size={18} />
               <span>Mensajes</span>
             </Link>
-            <Link href="/notifications" className="hover:text-secondary transition relative">
+            <Link
+              href="/notifications"
+              className="px-3 py-2 hover:bg-primary-foreground/10 rounded-lg transition relative font-medium"
+            >
               <Bell size={20} />
               {unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -77,14 +102,20 @@ export function AppNavbar() {
               )}
             </Link>
 
-            <Link href="/support" className="hover:text-secondary transition flex items-center gap-1">
+            <Link
+              href="/support"
+              className="px-3 py-2 hover:bg-primary-foreground/10 rounded-lg transition flex items-center gap-1 font-medium"
+            >
               <HelpCircle size={18} />
               <span>Soporte</span>
             </Link>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  className="text-primary-foreground hover:bg-primary-foreground/10 flex items-center gap-2 font-medium"
+                >
                   <User size={18} />
                   <span>Perfil</span>
                 </Button>
@@ -95,17 +126,21 @@ export function AppNavbar() {
                     Ver Mi Perfil
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href={profileEditLink} className="cursor-pointer">
-                    Editar Perfil
-                  </Link>
-                </DropdownMenuItem>
+                {!isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href={profileEditLink} className="cursor-pointer">
+                      Editar Perfil
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/hirings" className="cursor-pointer">
-                    Gestionar Contrataciones
-                  </Link>
-                </DropdownMenuItem>
+                {!isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/hirings" className="cursor-pointer">
+                      Gestionar Contrataciones
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -116,9 +151,13 @@ export function AppNavbar() {
                   <p className="text-sm font-semibold">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs opacity-75 capitalize">{user.role}</p>
+                  <p className="text-xs opacity-75 capitalize">{isAdmin ? "Administrador" : user.role}</p>
                 </div>
-                <Button onClick={handleLogout} variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  className="text-primary-foreground hover:bg-primary-foreground/10"
+                >
                   Salir
                 </Button>
               </div>
@@ -134,6 +173,16 @@ export function AppNavbar() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 space-y-3 border-t border-primary-foreground/30 pt-4">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-3 py-3 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground font-semibold rounded-lg transition"
+              >
+                <Shield size={18} />
+                <span>Gestiones Administrador</span>
+              </Link>
+            )}
+
             <Link href="/search" className="block text-sm hover:text-secondary transition py-2">
               Buscar
             </Link>
@@ -159,12 +208,16 @@ export function AppNavbar() {
               <Link href="/my-profile" className="block text-sm hover:text-secondary transition py-2">
                 Ver Mi Perfil
               </Link>
-              <Link href={profileEditLink} className="block text-sm hover:text-secondary transition py-2">
-                Editar Perfil
-              </Link>
-              <Link href="/hirings" className="block text-sm hover:text-secondary transition py-2">
-                Gestionar Contrataciones
-              </Link>
+              {!isAdmin && (
+                <>
+                  <Link href={profileEditLink} className="block text-sm hover:text-secondary transition py-2">
+                    Editar Perfil
+                  </Link>
+                  <Link href="/hirings" className="block text-sm hover:text-secondary transition py-2">
+                    Gestionar Contrataciones
+                  </Link>
+                </>
+              )}
             </div>
             <Button
               onClick={handleLogout}
