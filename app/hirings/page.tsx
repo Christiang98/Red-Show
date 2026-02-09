@@ -11,12 +11,14 @@ import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, MessageSquare, Check, X } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function HiringsPage() {
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     const currentUser = getCurrentUser()
@@ -49,10 +51,17 @@ export default function HiringsPage() {
         body: JSON.stringify({ status: "accepted" }),
       })
       mutate()
-      alert("Contratación aceptada. Ahora puedes enviar mensajes desde la sección de Mensajes.")
+      toast({
+        title: "Contratacion aceptada",
+        description: "Ahora puedes enviar mensajes desde la seccion de Mensajes.",
+      })
     } catch (error) {
-      console.error("[v0] Error aceptando contratación:", error)
-      alert("Error al aceptar la contratación")
+      console.error("[v0] Error aceptando contratacion:", error)
+      toast({
+        title: "Error",
+        description: "Error al aceptar la contratacion",
+        variant: "destructive",
+      })
     }
   }
 
@@ -64,10 +73,17 @@ export default function HiringsPage() {
         body: JSON.stringify({ status: "rejected" }),
       })
       mutate()
-      alert("Contratación rechazada")
+      toast({
+        title: "Contratacion rechazada",
+        description: "La solicitud ha sido rechazada",
+      })
     } catch (error) {
-      console.error("[v0] Error rechazando contratación:", error)
-      alert("Error al rechazar la contratación")
+      console.error("[v0] Error rechazando contratacion:", error)
+      toast({
+        title: "Error",
+        description: "Error al rechazar la contratacion",
+        variant: "destructive",
+      })
     }
   }
 

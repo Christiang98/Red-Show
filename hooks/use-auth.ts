@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import type { User } from "@/lib/auth"
 
 const API_URL = "/api"
@@ -93,6 +93,7 @@ export function useAuth() {
   }, [router])
 
   const isAuthenticated = !!user && !!localStorage.getItem("authToken")
+  const isAdmin = user?.role === "admin"
 
-  return { user, loading, error, login, register, logout, isAuthenticated }
+  return { user, loading, error, login, register, logout, isAuthenticated, isAdmin }
 }

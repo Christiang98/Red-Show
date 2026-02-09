@@ -71,38 +71,47 @@ export default function DashboardPage() {
     },
     {
       title: "Tu Perfil",
-      description: user.role === "owner" ? "Edita tu información de negocio" : "Actualiza tu portafolio",
-      href: user.role === "owner" ? "/profile/owner" : "/profile/artist",
+      description: user.role === "owner" ? "Ve y edita tu información de negocio" : "Ve y actualiza tu portafolio",
+      href: "/my-profile",
       icon: BarChart3,
       color: "bg-orange-50 border-orange-200",
     },
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <AppNavbar />
 
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2">
+        <div className="mb-8 bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 md:p-8 text-primary-foreground shadow-lg">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">
             ¡Bienvenido, {user.firstName} {user.lastName}!
           </h1>
-          <p className="text-muted-foreground">Gestiona tu perfil y conecta con otros usuarios en Red Show</p>
+          <p className="text-primary-foreground/80">Gestiona tu perfil y conecta con otros usuarios en Red Show</p>
         </div>
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, idx) => {
             const Icon = stat.icon
+            const colors = [
+              "bg-primary/10 border-primary/20",
+              "bg-green-50 border-green-200",
+              "bg-secondary/10 border-secondary/20",
+              "bg-orange-50 border-orange-200",
+            ]
+            const iconColors = ["text-primary", "text-green-600", "text-secondary", "text-orange-600"]
             return (
-              <Card key={idx} className="p-6 hover:shadow-lg transition">
+              <Card key={idx} className={`p-6 hover:shadow-lg transition border-2 ${colors[idx]}`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-3xl font-bold text-primary mt-2">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
+                    <p className="text-3xl font-bold text-foreground mt-2">{stat.value}</p>
                   </div>
-                  <Icon className="text-secondary opacity-50" size={32} />
+                  <div className={`p-3 rounded-xl ${colors[idx]}`}>
+                    <Icon className={iconColors[idx]} size={28} />
+                  </div>
                 </div>
               </Card>
             )
@@ -136,8 +145,8 @@ export default function DashboardPage() {
 
         {/* Recent Activity - Últimas contrataciones */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-primary mb-6">Actividad Reciente</h2>
-          <Card className="p-6">
+          <h2 className="text-2xl font-bold text-foreground mb-6">Actividad Reciente</h2>
+          <Card className="p-6 border-2 border-border/50 bg-card/80 backdrop-blur">
             {bookingsData && bookingsData.length > 0 ? (
               <div className="space-y-4">
                 {bookingsData.slice(0, 3).map((booking: any) => (

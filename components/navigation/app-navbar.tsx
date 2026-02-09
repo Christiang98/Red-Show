@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, logoutUser } from "@/lib/auth"
-import { Menu, X, MessageSquare, Bell, User, HelpCircle } from "lucide-react"
+import { Menu, X, MessageSquare, Bell, User, HelpCircle, Shield, Search, Calendar, LogOut } from "lucide-react"
 import useSWR from "swr"
 import {
   DropdownMenu,
@@ -43,136 +43,178 @@ export function AppNavbar() {
   if (!user) return null
 
   const profileEditLink = user.role === "owner" ? "/profile/owner" : "/profile/artist"
+  const isAdmin = user.role === "admin"
 
   return (
-    <nav className="bg-primary text-primary-foreground sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-4">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition">
-            <div className="w-8 h-8 bg-primary-foreground rounded-lg flex items-center justify-center">
-              <span className="text-primary font-bold">R</span>
-            </div>
-            <span>Red Show</span>
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
+            <img 
+              src="/logo-redshow.png" 
+              alt="Red Show" 
+              className="h-12 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link href="/search" className="hover:text-secondary transition">
-              Buscar
+          <div className="hidden md:flex items-center gap-2">
+            <Link 
+              href="/search" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
+            >
+              <Search size={18} />
+              <span>Buscar</span>
             </Link>
-            <Link href="/bookings" className="hover:text-secondary transition">
-              Contrataciones
+            <Link 
+              href="/bookings" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
+            >
+              <Calendar size={18} />
+              <span>Contrataciones</span>
             </Link>
-            <Link href="/messaging" className="hover:text-secondary transition flex items-center gap-1">
+            <Link 
+              href="/messaging" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
+            >
               <MessageSquare size={18} />
               <span>Mensajes</span>
             </Link>
-            <Link href="/notifications" className="hover:text-secondary transition relative">
+            
+            <Link 
+              href="/notifications" 
+              className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition"
+            >
               <Bell size={20} />
               {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </Link>
 
-            <Link href="/support" className="hover:text-secondary transition flex items-center gap-1">
-              <HelpCircle size={18} />
-              <span>Soporte</span>
+            <Link 
+              href="/support" 
+              className="p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition"
+              title="Soporte"
+            >
+              <HelpCircle size={20} />
             </Link>
+
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition font-medium"
+              >
+                <Shield size={18} />
+                <span>Admin</span>
+              </Link>
+            )}
+
+            <div className="w-px h-8 bg-gray-200 mx-2" />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80 flex items-center gap-2">
-                  <User size={18} />
-                  <span>Perfil</span>
+                <Button variant="ghost" className="flex items-center gap-2 text-gray-700 hover:bg-gray-100">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold text-sm">
+                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                  </div>
+                  <div className="text-left hidden lg:block">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {user.firstName}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-3 py-2 border-b">
+                  <p className="font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                  <p className="text-sm text-gray-500">{user.email}</p>
+                </div>
                 <DropdownMenuItem asChild>
-                  <Link href="/my-profile" className="cursor-pointer">
+                  <Link href="/my-profile" className="cursor-pointer flex items-center gap-2">
+                    <User size={16} />
                     Ver Mi Perfil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={profileEditLink} className="cursor-pointer">
+                  <Link href={profileEditLink} className="cursor-pointer flex items-center gap-2">
+                    <User size={16} />
                     Editar Perfil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/hirings" className="cursor-pointer">
+                  <Link href="/hirings" className="cursor-pointer flex items-center gap-2">
+                    <Calendar size={16} />
                     Gestionar Contrataciones
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 flex items-center gap-2">
+                  <LogOut size={16} />
+                  Cerrar Sesion
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* User dropdown */}
-            <div className="border-l border-primary-foreground/30 pl-6">
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <p className="text-sm font-semibold">
-                    {user.firstName} {user.lastName}
-                  </p>
-                  <p className="text-xs opacity-75 capitalize">{user.role}</p>
-                </div>
-                <Button onClick={handleLogout} variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-                  Salir
-                </Button>
-              </div>
-            </div>
           </div>
 
           {/* Mobile menu button */}
-          <button className="md:hidden text-primary-foreground" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <button className="md:hidden text-gray-700 p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden mt-4 space-y-3 border-t border-primary-foreground/30 pt-4">
-            <Link href="/search" className="block text-sm hover:text-secondary transition py-2">
-              Buscar
+          <div className="md:hidden mt-4 space-y-1 border-t border-gray-200 pt-4">
+            <Link href="/search" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <Search size={20} />
+              <span>Buscar</span>
             </Link>
-            <Link href="/bookings" className="block text-sm hover:text-secondary transition py-2">
-              Contrataciones
+            <Link href="/bookings" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <Calendar size={20} />
+              <span>Contrataciones</span>
             </Link>
-            <Link href="/messaging" className="block text-sm hover:text-secondary transition py-2">
-              Mensajes
+            <Link href="/messaging" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <MessageSquare size={20} />
+              <span>Mensajes</span>
             </Link>
-            <Link
-              href="/notifications"
-              className="block text-sm hover:text-secondary transition py-2 flex items-center gap-2"
-            >
+            <Link href="/notifications" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <Bell size={20} />
               <span>Notificaciones</span>
               {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">{unreadCount}</span>
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 ml-auto">{unreadCount}</span>
               )}
             </Link>
-            <Link href="/support" className="block text-sm hover:text-secondary transition py-2">
-              Soporte Técnico
+            <Link href="/support" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <HelpCircle size={20} />
+              <span>Soporte</span>
             </Link>
-            <div className="border-t border-primary-foreground/20 pt-3 mt-3">
-              <Link href="/my-profile" className="block text-sm hover:text-secondary transition py-2">
-                Ver Mi Perfil
+            {isAdmin && (
+              <Link href="/admin" className="flex items-center gap-3 px-3 py-3 rounded-lg bg-primary/10 text-primary font-semibold">
+                <Shield size={20} />
+                <span>Gestion del Sistema</span>
               </Link>
-              <Link href={profileEditLink} className="block text-sm hover:text-secondary transition py-2">
-                Editar Perfil
+            )}
+            <div className="border-t border-gray-200 pt-3 mt-3">
+              <Link href="/my-profile" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                <User size={20} />
+                <span>Ver Mi Perfil</span>
               </Link>
-              <Link href="/hirings" className="block text-sm hover:text-secondary transition py-2">
-                Gestionar Contrataciones
+              <Link href={profileEditLink} className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                <User size={20} />
+                <span>Editar Perfil</span>
               </Link>
             </div>
-            <Button
+            <button
               onClick={handleLogout}
-              variant="ghost"
-              className="w-full text-primary-foreground justify-start mt-2"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-red-600 hover:bg-red-50 transition mt-2"
             >
-              Salir
-            </Button>
+              <LogOut size={20} />
+              <span>Cerrar Sesion</span>
+            </button>
           </div>
         )}
       </div>

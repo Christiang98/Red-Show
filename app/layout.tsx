@@ -2,6 +2,7 @@ import type React from "react"
 import { Poppins } from "next/font/google"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 const poppins = Poppins({
@@ -25,6 +26,7 @@ export default function RootLayout({
     <html lang="es" className={poppins.variable}>
       <body className="font-sans antialiased bg-background">
         <main className="min-h-screen">{children}</main>
+        <Toaster />
         <Analytics />
       </body>
     </html>

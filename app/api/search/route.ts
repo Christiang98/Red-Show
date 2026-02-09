@@ -27,7 +27,8 @@ export async function GET(request: Request) {
         op.city as owner_city,
         op.neighborhood as owner_neighborhood,
         op.profile_image as owner_image,
-        op.is_published as owner_published
+        op.is_published as owner_published,
+        op.additional_services
       FROM users u
       LEFT JOIN profiles p ON u.id = p.user_id
       LEFT JOIN artist_profiles ap ON u.id = ap.user_id
@@ -90,7 +91,11 @@ export async function GET(request: Request) {
       bio: row.bio,
       avatar_url: row.role === "owner" ? row.owner_image || row.avatar_url : row.artist_image || row.avatar_url,
       rating: 0,
+      // Campos para Locales
       capacity: row.capacity,
+      business_type: row.business_type,
+      additional_services: row.additional_services || "",
+      // Campos para Artistas
       experience_years: row.experience_years,
       price_range: row.price_range,
     }))

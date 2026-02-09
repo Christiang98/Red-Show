@@ -100,7 +100,11 @@ export function RegisterForm() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary mb-2">Red Show</h1>
+            <img 
+              src="/logo-redshow.png" 
+              alt="Red Show" 
+              className="h-20 w-auto mx-auto mb-4 object-contain"
+            />
             <p className="text-muted-foreground">Elige tu tipo de cuenta</p>
           </div>
 

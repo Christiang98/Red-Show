@@ -62,8 +62,12 @@ export function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2">Red Show</h1>
-          <p className="text-muted-foreground">Inicia sesión en tu cuenta</p>
+          <img 
+            src="/logo-redshow.png" 
+            alt="Red Show" 
+            className="h-20 w-auto mx-auto mb-4 object-contain"
+          />
+          <p className="text-muted-foreground">Inicia sesion en tu cuenta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

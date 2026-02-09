@@ -68,8 +68,8 @@ export function ChatWindow({ conversationWith, currentUser, receiverId, senderId
         mutate()
         onMessageSent?.()
       }
-    } catch (error) {
-      console.error("[v0] Error enviando mensaje:", error)
+    } catch {
+      // Error silencioso al enviar mensaje
     } finally {
       setIsLoading(false)
     }

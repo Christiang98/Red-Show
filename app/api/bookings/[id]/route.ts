@@ -5,7 +5,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   try {
     const { status } = await request.json()
 
-    console.log("[v0] Actualizando booking:", params.id, "a estado:", status)
+    
 
     // Actualizar el booking
     await runAsync("UPDATE bookings SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [status, params.id])
@@ -24,36 +24,49 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       [params.id],
     )
 
+    // Determinar quien envio la solicitud original y quien la esta respondiendo
+    // El que recibe la notificacion es el que ENVIO la solicitud original
+    let notifyUserId: number
+    let responderName: string
+    
+    if (booking.sender_role === "artist") {
+      // El artista envio, el owner responde -> notificar al artista
+      notifyUserId = booking.artist_id
+      responderName = booking.owner_name
+    } else {
+      // El owner envio, el artista responde -> notificar al owner
+      notifyUserId = booking.owner_id
+      responderName = booking.artist_name
+    }
+
     if (status === "accepted") {
-      // Notificar al artista que su solicitud fue aceptada
       await runAsync(
         `INSERT INTO notifications (user_id, type, title, message, related_id, related_type) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          booking.artist_id,
+          notifyUserId,
           "booking_accepted",
           "Solicitud Aceptada",
-          `${booking.owner_name} ha aceptado tu solicitud para "${booking.title}"`,
+          `${responderName} ha aceptado tu solicitud para "${booking.title}". Ya pueden comenzar a chatear.`,
           booking.id,
           "booking",
         ],
       )
     } else if (status === "rejected") {
-      // Notificar al artista que su solicitud fue rechazada
       await runAsync(
         `INSERT INTO notifications (user_id, type, title, message, related_id, related_type) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          booking.artist_id,
+          notifyUserId,
           "booking_rejected",
           "Solicitud Rechazada",
-          `${booking.owner_name} ha rechazado tu solicitud para "${booking.title}"`,
+          `${responderName} ha rechazado tu solicitud para "${booking.title}"`,
           booking.id,
           "booking",
         ],
       )
     } else if (status === "completed") {
-      // Notificar a ambas partes que el evento fue completado
+      // Notificar a ambas partes
       await runAsync(
         `INSERT INTO notifications (user_id, type, title, message, related_id, related_type) 
          VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)`,
@@ -74,10 +87,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       )
     }
 
-    console.log("[v0] Booking actualizado y notificaciones creadas")
     return NextResponse.json(booking, { status: 200 })
-  } catch (error) {
-    console.error("[v0] Error actualizando booking:", error)
+  } catch {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
@@ -85,8 +96,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 // GET - Obtener un booking específico con detalles completos
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log("[v0] Obteniendo booking:", params.id)
-
     const booking = await getAsync(
       `SELECT b.*,
         artist.first_name || ' ' || artist.last_name as artist_name,
@@ -108,8 +117,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     return NextResponse.json(booking)
-  } catch (error) {
-    console.error("[v0] Error obteniendo booking:", error)
+  } catch {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

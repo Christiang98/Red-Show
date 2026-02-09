@@ -41,8 +41,16 @@ export async function PATCH(request: NextRequest) {
       await runQuery(`UPDATE profiles SET verified = 1 WHERE user_id = ?`, [userId])
     } else if (action === "unverify") {
       await runQuery(`UPDATE profiles SET verified = 0 WHERE user_id = ?`, [userId])
+    } else if (action === "disable") {
+      // Deshabilitar cuenta del usuario
+      await runQuery(`UPDATE users SET is_active = 0 WHERE id = ?`, [userId])
+      await runQuery(`UPDATE artist_profiles SET is_published = 0 WHERE user_id = ?`, [userId])
+      await runQuery(`UPDATE owner_profiles SET is_published = 0 WHERE user_id = ?`, [userId])
+    } else if (action === "enable") {
+      // Habilitar cuenta del usuario
+      await runQuery(`UPDATE users SET is_active = 1 WHERE id = ?`, [userId])
     } else if (action === "suspend") {
-      // Despublicar todos los perfiles del usuario
+      // Suspender (despublicar todos los perfiles pero mantener cuenta activa)
       await runQuery(`UPDATE artist_profiles SET is_published = 0 WHERE user_id = ?`, [userId])
       await runQuery(`UPDATE owner_profiles SET is_published = 0 WHERE user_id = ?`, [userId])
     } else if (action === "delete") {

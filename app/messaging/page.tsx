@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { ProtectedRoute } from "@/components/protectedRoute"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { ConversationList } from "@/components/messaging/conversation-list"
@@ -12,13 +13,39 @@ import useSWR from "swr"
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function MessagingPage() {
+  const searchParams = useSearchParams()
+  const targetUserId = searchParams.get("userId")
+  
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
+  const [targetUserName, setTargetUserName] = useState<string>("")
 
   useEffect(() => {
     const currentUser = getCurrentUser()
     setUser(currentUser)
   }, [])
+
+  // Si viene un userId desde la URL (ej: desde contratacion aceptada), cargar info del usuario
+  useEffect(() => {
+    if (targetUserId) {
+      setSelectedConversationId(targetUserId)
+      // Cargar nombre del usuario destino
+      fetch(`/api/profiles?userId=${targetUserId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.profile) {
+            const name = data.specificProfile?.business_name || 
+                        data.specificProfile?.artist_name ||
+                        `${data.profile.first_name || ''} ${data.profile.last_name || ''}`.trim() ||
+                        `Usuario ${targetUserId}`
+            setTargetUserName(name)
+          }
+        })
+        .catch(() => {
+          setTargetUserName(`Usuario ${targetUserId}`)
+        })
+    }
+  }, [targetUserId])
 
   const { data: messages, mutate } = useSWR(user ? `/api/messages?userId=${user.id}` : null, fetcher)
 
@@ -40,13 +67,25 @@ export default function MessagingPage() {
       return acc
     }, []) || []
 
-  const selectedConversation = conversations.find((c: any) => c.id === selectedConversationId)
+  // Si hay un targetUserId y no existe en las conversaciones, agregarlo
+  const allConversations = targetUserId && !conversations.find((c: any) => c.id === targetUserId)
+    ? [...conversations, {
+        id: targetUserId,
+        name: targetUserName || `Usuario ${targetUserId}`,
+        lastMessage: "Nueva conversacion",
+        timestamp: new Date(),
+        unread: false,
+        avatar: "/placeholder.svg?height=40&width=40",
+      }]
+    : conversations
+
+  const selectedConversation = allConversations.find((c: any) => c.id === selectedConversationId)
 
   useEffect(() => {
-    if (conversations.length > 0 && !selectedConversationId) {
-      setSelectedConversationId(conversations[0].id)
+    if (allConversations.length > 0 && !selectedConversationId && !targetUserId) {
+      setSelectedConversationId(allConversations[0].id)
     }
-  }, [conversations, selectedConversationId])
+  }, [allConversations, selectedConversationId, targetUserId])
 
   return (
     <ProtectedRoute>
@@ -58,32 +97,32 @@ export default function MessagingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[calc(100vh-200px)]">
             <div className="md:col-span-1">
-              {conversations.length > 0 ? (
+              {allConversations.length > 0 ? (
                 <ConversationList
-                  conversations={conversations}
+                  conversations={allConversations}
                   onSelectConversation={setSelectedConversationId}
                   selectedId={selectedConversationId}
                 />
               ) : (
                 <Card className="h-full flex items-center justify-center p-4">
-                  <p className="text-muted-foreground text-center">No hay conversaciones aún</p>
+                  <p className="text-muted-foreground text-center">No hay conversaciones aun</p>
                 </Card>
               )}
             </div>
 
             <div className="md:col-span-3">
-              {selectedConversation && user ? (
+              {selectedConversationId && user ? (
                 <ChatWindow
-                  conversationWith={selectedConversation.name}
+                  conversationWith={selectedConversation?.name || targetUserName || `Usuario ${selectedConversationId}`}
                   currentUser={`${user.firstName} ${user.lastName}`}
-                  receiverId={Number.parseInt(selectedConversationId || "0")}
+                  receiverId={Number.parseInt(selectedConversationId)}
                   senderId={user.id}
                   onMessageSent={mutate}
                 />
               ) : (
                 <Card className="h-full flex items-center justify-center">
                   <p className="text-muted-foreground">
-                    {conversations.length === 0 ? "No hay mensajes" : "Selecciona una conversación"}
+                    {allConversations.length === 0 ? "No hay mensajes" : "Selecciona una conversacion"}
                   </p>
                 </Card>
               )}

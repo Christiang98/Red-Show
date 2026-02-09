@@ -49,27 +49,79 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Guardando perfil para usuario:", userId, "rol:", role)
     console.log("[v0] isPublished:", specificProfileData?.isPublished)
 
+    // Intentar agregar columnas de redes sociales si no existen
+    try {
+      await runQuery("ALTER TABLE profiles ADD COLUMN instagram TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
+    try {
+      await runQuery("ALTER TABLE profiles ADD COLUMN tiktok TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
+    try {
+      await runQuery("ALTER TABLE profiles ADD COLUMN facebook TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
+    try {
+      await runQuery("ALTER TABLE profiles ADD COLUMN other_social TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
+
     // Crear o actualizar perfil base
     const existingProfile = await getQuery("SELECT id FROM profiles WHERE user_id = ?", [userId])
 
     if (existingProfile) {
       await runQuery(
         `UPDATE profiles SET 
-          bio = ?, location = ?, avatar_url = ?, phone = ?
+          bio = ?, location = ?, avatar_url = ?, phone = ?, 
+          instagram = ?, tiktok = ?, facebook = ?, other_social = ?
         WHERE user_id = ?`,
-        [profileData.bio, profileData.location, profileData.avatarUrl, profileData.phone, userId],
+        [
+          profileData.bio, 
+          profileData.location, 
+          profileData.avatarUrl, 
+          profileData.phone,
+          profileData.instagram || "",
+          profileData.tiktok || "",
+          profileData.facebook || "",
+          profileData.otherSocial || "",
+          userId
+        ],
       )
     } else {
       await runQuery(
-        `INSERT INTO profiles (user_id, bio, location, avatar_url, phone) 
-        VALUES (?, ?, ?, ?, ?)`,
-        [userId, profileData.bio, profileData.location, profileData.avatarUrl, profileData.phone],
+        `INSERT INTO profiles (user_id, bio, location, avatar_url, phone, instagram, tiktok, facebook, other_social) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId, 
+          profileData.bio, 
+          profileData.location, 
+          profileData.avatarUrl, 
+          profileData.phone,
+          profileData.instagram || "",
+          profileData.tiktok || "",
+          profileData.facebook || "",
+          profileData.otherSocial || ""
+        ],
       )
     }
 
     // Crear o actualizar perfil específico según rol
     if (role === "owner" && specificProfileData) {
       const existingOwner = await getQuery("SELECT id FROM owner_profiles WHERE user_id = ?", [userId])
+
+      // Intentar agregar columnas nuevas si no existen (migracion automatica)
+      try {
+        await runQuery("ALTER TABLE owner_profiles ADD COLUMN gallery_images TEXT DEFAULT '[]'", [])
+      } catch {
+        // La columna ya existe, ignorar
+      }
+      try {
+        await runQuery("ALTER TABLE owner_profiles ADD COLUMN business_hours_data TEXT DEFAULT '[]'", [])
+      } catch {
+        // La columna ya existe, ignorar
+      }
+      try {
+        await runQuery("ALTER TABLE owner_profiles ADD COLUMN services TEXT DEFAULT '[]'", [])
+      } catch {
+        // La columna ya existe, ignorar
+      }
 
       if (existingOwner) {
         await runQuery(
@@ -78,7 +130,7 @@ export async function POST(request: NextRequest) {
             description = ?, business_hours = ?, additional_services = ?,
             policies = ?, cuit_cuil = ?, profile_image = ?, featured_image = ?, 
             is_published = ?, other_business_type = ?, city = ?, neighborhood = ?,
-            business_hours_data = ?, services = ?
+            business_hours_data = ?, services = ?, gallery_images = ?
           WHERE user_id = ?`,
           [
             specificProfileData.businessName,
@@ -98,6 +150,7 @@ export async function POST(request: NextRequest) {
             specificProfileData.neighborhood || "",
             specificProfileData.businessHoursData || "[]",
             specificProfileData.services || "[]",
+            specificProfileData.galleryImages || "[]",
             userId,
           ],
         )
@@ -107,8 +160,8 @@ export async function POST(request: NextRequest) {
           (user_id, business_name, business_type, address, capacity, description, 
            business_hours, additional_services, policies, cuit_cuil, profile_image, 
            featured_image, is_published, other_business_type, city, neighborhood, 
-           business_hours_data, services) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           business_hours_data, services, gallery_images) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             userId,
             specificProfileData.businessName,
@@ -128,6 +181,7 @@ export async function POST(request: NextRequest) {
             specificProfileData.neighborhood || "",
             specificProfileData.businessHoursData || "[]",
             specificProfileData.services || "[]",
+            specificProfileData.galleryImages || "[]",
           ],
         )
       }

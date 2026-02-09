@@ -22,11 +22,12 @@ export default function Home() {
       {/* Navigation */}
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">R</span>
-            </div>
-            <span className="font-bold text-xl text-primary">Red Show</span>
+          <div className="flex items-center">
+            <img 
+              src="/logo-redshow.png" 
+              alt="Red Show" 
+              className="h-14 w-auto object-contain"
+            />
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-foreground hover:text-primary transition">

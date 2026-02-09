@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { compressImage } from "@/lib/image-utils"
-import { Upload, X } from "lucide-react"
+import { Upload, X, Check, Clock, Calendar, ImageIcon, ArrowLeft } from "lucide-react"
 import { getCurrentUser } from "@/lib/auth"
-import { Checkbox } from "@/components/ui/checkbox"
+import Link from "next/link"
+import { Switch } from "@/components/ui/switch"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 interface ArtistProfileData {
   stageName: string
@@ -36,10 +39,12 @@ interface ArtistProfileData {
   isPublished: boolean
 }
 
-const DAYS_OF_WEEK = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+const DAYS_OF_WEEK = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
 
 export function ArtistProfileForm() {
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+  const router = useRouter()
   const [formData, setFormData] = useState<ArtistProfileData>({
     stageName: "",
     category: "",
@@ -69,7 +74,6 @@ export function ArtistProfileForm() {
       const user = getCurrentUser()
       if (!user) return
 
-      console.log("[v0] Cargando perfil para usuario:", user.id)
       const response = await fetch(`/api/profiles?userId=${user.id}`)
       const data = await response.json()
 
@@ -127,9 +131,16 @@ export function ArtistProfileForm() {
     try {
       const compressed = await compressImage(file, 400)
       setFormData((prev) => ({ ...prev, profileImage: compressed }))
+      toast({
+        title: "Imagen cargada",
+        description: "La imagen de perfil se ha procesado correctamente",
+      })
     } catch (error) {
-      console.error("[v0] Error procesando imagen:", error)
-      alert("Error procesando la imagen")
+      toast({
+        title: "Error",
+        description: "Error procesando la imagen",
+        variant: "destructive",
+      })
     }
   }
 
@@ -143,9 +154,16 @@ export function ArtistProfileForm() {
         ...prev,
         portfolioImages: [...prev.portfolioImages, ...compressed].slice(0, 10),
       }))
+      toast({
+        title: "Imagenes agregadas",
+        description: `Se agregaron ${compressed.length} imagen(es) al portfolio`,
+      })
     } catch (error) {
-      console.error("[v0] Error procesando imágenes:", error)
-      alert("Error procesando las imágenes")
+      toast({
+        title: "Error",
+        description: "Error procesando las imagenes",
+        variant: "destructive",
+      })
     }
   }
 
@@ -163,12 +181,14 @@ export function ArtistProfileForm() {
     try {
       const user = getCurrentUser()
       if (!user) {
-        alert("No se encontró información de usuario")
+        toast({
+          title: "Error",
+          description: "No se encontro informacion de usuario",
+          variant: "destructive",
+        })
         setLoading(false)
         return
       }
-
-      console.log("[v0] Guardando perfil para usuario:", user.id)
 
       const response = await fetch("/api/profiles", {
         method: "POST",
@@ -183,7 +203,7 @@ export function ArtistProfileForm() {
             phone: "",
             instagram: formData.instagram,
             tiktok: formData.tiktok,
-            other_social: formData.otherSocial,
+            otherSocial: formData.otherSocial,
           },
           specificProfileData: {
             stageName: formData.stageName,
@@ -204,17 +224,26 @@ export function ArtistProfileForm() {
       })
 
       const result = await response.json()
-      console.log("[v0] Respuesta del servidor:", result)
 
       if (response.ok) {
-        alert("Perfil guardado exitosamente!")
-        window.location.href = "/dashboard"
+        toast({
+          title: "Perfil guardado",
+          description: "Tu perfil se ha guardado exitosamente",
+        })
+        setTimeout(() => router.push("/my-profile"), 1500)
       } else {
-        alert(`Error guardando el perfil: ${result.error || "Error desconocido"}`)
+        toast({
+          title: "Error",
+          description: result.error || "Error guardando el perfil",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("[v0] Error guardando perfil:", error)
-      alert("Error guardando el perfil")
+      toast({
+        title: "Error",
+        description: "Error guardando el perfil",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -222,17 +251,25 @@ export function ArtistProfileForm() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/my-profile">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver a mi perfil
+          </Link>
+        </Button>
+      </div>
       <Card className="p-8">
         <h2 className="text-2xl font-bold text-primary mb-6">Perfil de Artista Emprendedor</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Identidad Artística */}
+          {/* Identidad Artistica */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Identidad Artística</h3>
+            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Identidad Artistica</h3>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Nombre Artístico *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Nombre Artistico *</label>
                 <Input
                   type="text"
                   name="stageName"
@@ -243,22 +280,22 @@ export function ArtistProfileForm() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Categoría *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Categoria *</label>
                 <select
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                   required
                 >
-                  <option value="">Selecciona una categoría</option>
-                  <option value="musician">Músico</option>
+                  <option value="">Selecciona una categoria</option>
+                  <option value="musician">Musico</option>
                   <option value="band">Banda</option>
                   <option value="dj">DJ</option>
                   <option value="comedian">Comediante</option>
-                  <option value="photographer">Fotógrafo</option>
-                  <option value="videographer">Videógrafo</option>
-                  <option value="gastronomy">Gastronómico/Catering</option>
+                  <option value="photographer">Fotografo</option>
+                  <option value="videographer">Videografo</option>
+                  <option value="gastronomy">Gastronomico/Catering</option>
                   <option value="decorator">Decorador</option>
                   <option value="other">Otro</option>
                 </select>
@@ -267,7 +304,7 @@ export function ArtistProfileForm() {
 
             {formData.category === "other" && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Especifica tu categoría</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Especifica tu categoria</label>
                 <Input
                   type="text"
                   name="otherCategory"
@@ -300,10 +337,10 @@ export function ArtistProfileForm() {
                   name="priceRange"
                   value={formData.priceRange}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                 >
                   <option value="">Selecciona un rango</option>
-                  <option value="budget">Económico ($ - $$)</option>
+                  <option value="budget">Economico ($ - $$)</option>
                   <option value="moderate">Moderado ($$ - $$$)</option>
                   <option value="premium">Premium ($$$ - $$$$)</option>
                   <option value="luxury">Lujo ($$$$+)</option>
@@ -312,16 +349,16 @@ export function ArtistProfileForm() {
             </div>
           </div>
 
-          {/* Biografía */}
+          {/* Biografia */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Biografía</label>
+            <label className="block text-sm font-medium text-foreground mb-2">Biografia</label>
             <textarea
               name="bio"
               value={formData.bio}
               onChange={handleInputChange}
-              placeholder="Cuéntanos sobre ti, tu estilo, experiencia..."
+              placeholder="Cuentanos sobre ti, tu estilo, experiencia..."
               rows={4}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
             />
           </div>
 
@@ -394,9 +431,9 @@ export function ArtistProfileForm() {
             </div>
           </div>
 
-          {/* Ubicación */}
+          {/* Ubicacion */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Ubicación</h3>
+            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Ubicacion</h3>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -422,69 +459,85 @@ export function ArtistProfileForm() {
             </div>
           </div>
 
-          {/* Disponibilidad Horaria */}
+          {/* Disponibilidad Horaria - MEJORADO */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">
-              Disponibilidad Horaria
-            </h3>
-            <p className="text-sm text-muted-foreground">Marca los días y horarios en que estás disponible</p>
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Disponibilidad Horaria</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">Activa los dias en que estas disponible para trabajar</p>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {formData.availability.map((item, index) => (
-                <div key={index} className="flex items-center gap-4 p-3 border border-border rounded-lg">
-                  <div className="flex items-center gap-2 w-32">
-                    <Checkbox
+                <div
+                  key={index}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
+                    item.enabled
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-muted/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 w-40">
+                    <Switch
                       checked={item.enabled}
-                      onCheckedChange={(checked) => handleAvailabilityChange(index, "enabled", checked as boolean)}
+                      onCheckedChange={(checked) => handleAvailabilityChange(index, "enabled", checked)}
                     />
-                    <label className="text-sm font-medium">{item.day}</label>
+                    <label className={`text-sm font-medium ${item.enabled ? "text-primary" : "text-muted-foreground"}`}>
+                      {item.day}
+                    </label>
                   </div>
                   <div className="flex items-center gap-2 flex-1">
+                    <Clock className={`h-4 w-4 ${item.enabled ? "text-primary" : "text-muted-foreground"}`} />
                     <Input
                       type="time"
                       value={item.from}
                       onChange={(e) => handleAvailabilityChange(index, "from", e.target.value)}
                       disabled={!item.enabled}
-                      className="w-32"
+                      className={`w-28 ${!item.enabled && "opacity-50"}`}
                     />
-                    <span className="text-muted-foreground">hasta</span>
+                    <span className="text-muted-foreground">a</span>
                     <Input
                       type="time"
                       value={item.to}
                       onChange={(e) => handleAvailabilityChange(index, "to", e.target.value)}
                       disabled={!item.enabled}
-                      className="w-32"
+                      className={`w-28 ${!item.enabled && "opacity-50"}`}
                     />
                   </div>
+                  {item.enabled && <Check className="h-5 w-5 text-success" />}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Imágenes */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Imágenes</h3>
+          {/* Imagenes - MEJORADO */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Imagenes</h3>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Imagen de Perfil</label>
+              <p className="text-xs text-muted-foreground mb-3">Esta imagen aparecera en los resultados de busqueda</p>
               {formData.profileImage ? (
                 <div className="relative inline-block">
                   <img
                     src={formData.profileImage || "/placeholder.svg"}
                     alt="Perfil"
-                    className="w-32 h-32 object-cover rounded-full"
+                    className="w-32 h-32 object-cover rounded-full border-4 border-primary/20"
                   />
                   <button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, profileImage: null }))}
-                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground p-1 rounded-full"
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground p-1.5 rounded-full hover:bg-destructive/90"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-border rounded-full cursor-pointer hover:bg-muted/50">
-                  <Upload className="h-8 w-8 text-muted-foreground" />
+                <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-primary/50 rounded-full cursor-pointer hover:bg-primary/5 transition-colors">
+                  <Upload className="h-8 w-8 text-primary" />
                   <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                 </label>
               )}
@@ -492,29 +545,30 @@ export function ArtistProfileForm() {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Imágenes de Portfolio ({formData.portfolioImages.length}/10)
+                Imagenes de Portfolio ({formData.portfolioImages.length}/10)
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <p className="text-xs text-muted-foreground mb-3">Agrega hasta 10 imagenes de tus trabajos anteriores</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {formData.portfolioImages.map((img, idx) => (
-                  <div key={idx} className="relative">
+                  <div key={idx} className="relative group">
                     <img
                       src={img || "/placeholder.svg"}
                       alt={`Portfolio ${idx + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
+                      className="w-full h-28 object-cover rounded-lg"
                     />
                     <button
                       type="button"
                       onClick={() => removePortfolioImage(idx)}
-                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground p-1 rounded-full"
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ))}
                 {formData.portfolioImages.length < 10 && (
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50">
-                    <Upload className="h-8 w-8 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Agregar</span>
+                  <label className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-secondary/50 rounded-lg cursor-pointer hover:bg-secondary/5 transition-colors">
+                    <Upload className="h-6 w-6 text-secondary mb-1" />
+                    <span className="text-xs text-secondary">Agregar</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -525,33 +579,36 @@ export function ArtistProfileForm() {
                   </label>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">Puedes subir hasta 10 imágenes de tus trabajos anteriores</p>
             </div>
           </div>
 
-          {/* Publicación */}
-          <div className="p-4 bg-secondary/10 border border-secondary/30 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="isPublished"
-                checked={formData.isPublished}
-                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPublished: checked as boolean }))}
-              />
-              <div>
-                <label htmlFor="isPublished" className="text-sm font-medium text-foreground cursor-pointer">
-                  Publicar mi perfil
-                </label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Al marcar esta opción, tu perfil será visible en las búsquedas públicas y podrás recibir solicitudes
-                  de contratación.
+          {/* Publicacion - MEJORADO */}
+          <div className="p-6 bg-gradient-to-r from-secondary/10 to-primary/10 border-2 border-secondary/30 rounded-xl">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-foreground mb-1">Publicar mi perfil</h4>
+                <p className="text-sm text-muted-foreground">
+                  Al activar esta opcion, tu perfil sera visible en las busquedas publicas y podras recibir
+                  solicitudes de contratacion.
                 </p>
               </div>
+              <Switch
+                checked={formData.isPublished}
+                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPublished: checked }))}
+                className="scale-125"
+              />
             </div>
+            {formData.isPublished && (
+              <div className="mt-4 flex items-center gap-2 text-success">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Tu perfil sera visible para todos los usuarios</span>
+              </div>
+            )}
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-lg"
             disabled={loading}
           >
             {loading ? "Guardando..." : "Guardar Perfil"}

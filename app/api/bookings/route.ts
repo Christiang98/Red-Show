@@ -24,32 +24,71 @@ export async function GET(request: NextRequest) {
 
     const bookings = await allAsync(query, params)
     return NextResponse.json(bookings, { status: 200 })
-  } catch (error) {
-    console.error("[v0] Error obteniendo bookings:", error)
+  } catch {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { artistId, ownerId, eventId, title, description, bookingDate, price } = await request.json()
+    const { 
+      artistId, 
+      ownerId, 
+      eventId, 
+      title, 
+      description, 
+      bookingDate, 
+      price,
+      senderName,
+      senderImage,
+      senderRole,
+      message 
+    } = await request.json()
 
-    console.log("[v0] Creando nuevo booking:", { artistId, ownerId, title })
+    // Agregar columnas nuevas si no existen
+    try {
+      await runAsync("ALTER TABLE bookings ADD COLUMN sender_name TEXT", [])
+    } catch { /* columna ya existe */ }
+    try {
+      await runAsync("ALTER TABLE bookings ADD COLUMN sender_image TEXT", [])
+    } catch { /* columna ya existe */ }
+    try {
+      await runAsync("ALTER TABLE bookings ADD COLUMN sender_role TEXT", [])
+    } catch { /* columna ya existe */ }
+    try {
+      await runAsync("ALTER TABLE bookings ADD COLUMN message TEXT", [])
+    } catch { /* columna ya existe */ }
 
     const result = await runAsync(
-      "INSERT INTO bookings (artist_id, owner_id, event_id, title, description, booking_date, price) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [artistId, ownerId, eventId, title, description, bookingDate, price],
+      `INSERT INTO bookings (artist_id, owner_id, event_id, title, description, booking_date, price, sender_name, sender_image, sender_role, message) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [artistId, ownerId, eventId, title, description, bookingDate, price, senderName, senderImage, senderRole, message],
     )
 
     const artist = await getAsync("SELECT first_name, last_name FROM users WHERE id = ?", [artistId])
     const owner = await getAsync("SELECT first_name, last_name FROM users WHERE id = ?", [ownerId])
 
-    const artistName = `${artist.first_name} ${artist.last_name}`
-    const ownerName = `${owner.first_name} ${owner.last_name}`
+    const artistName = artist ? `${artist.first_name} ${artist.last_name}` : "Usuario"
+    const ownerName = owner ? `${owner.first_name} ${owner.last_name}` : "Usuario"
 
-    // Si quien crea es el artista, notificar al owner. Si quien crea es el owner, notificar al artista.
-    const receiverId = ownerId // Por defecto asumimos que el artista crea la solicitud
-    const senderName = artistName
+    // Determinar quien recibe la notificacion: el otro usuario (no el que envio)
+    // El receiverId es el opuesto al senderId
+    let receiverId: number
+    let finalSenderName: string
+    
+    // Comparamos los IDs para determinar quien envio
+    // Si el sender es el artistId, notificamos al owner y viceversa
+    if (senderRole === "artist") {
+      receiverId = ownerId
+      finalSenderName = senderName || artistName
+    } else {
+      receiverId = artistId
+      finalSenderName = senderName || ownerName
+    }
+
+    const notificationMessage = message 
+      ? `${finalSenderName} te ha enviado una solicitud: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`
+      : `${finalSenderName} te ha enviado una solicitud de contratacion`
 
     await runAsync(
       `INSERT INTO notifications (user_id, type, title, message, related_id, related_type) 
@@ -57,17 +96,15 @@ export async function POST(request: NextRequest) {
       [
         receiverId,
         "new_booking",
-        "Nueva Solicitud de Contratación",
-        `${senderName} te ha enviado una solicitud para "${title}"`,
+        "Nueva Solicitud de Contratacion",
+        notificationMessage,
         result.id,
         "booking",
       ],
     )
 
-    console.log("[v0] Booking creado exitosamente con ID:", result.id)
     return NextResponse.json({ id: result.id, message: "Booking creado" }, { status: 201 })
-  } catch (error) {
-    console.error("[v0] Error creando booking:", error)
+  } catch {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

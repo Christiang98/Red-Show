@@ -12,8 +12,7 @@ export async function GET(request: NextRequest) {
     )
 
     return NextResponse.json(messages, { status: 200 })
-  } catch (error) {
-    console.error("[v0] Error obteniendo mensajes:", error)
+  } catch {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
@@ -29,8 +28,7 @@ export async function POST(request: NextRequest) {
     ])
 
     return NextResponse.json({ id: result.id, message: "Mensaje enviado" }, { status: 201 })
-  } catch (error) {
-    console.error("[v0] Error enviando mensaje:", error)
+  } catch {
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

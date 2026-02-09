@@ -12,37 +12,37 @@ const dbPath = path.join(dataDir, "redshow.db")
 let db: sqlite3.Database | null = null
 let initialized = false
 
-// Promisify sqlite3 methods for async/await support
-function runAsync(db: sqlite3.Database, sql: string, params: any[] = []): Promise<{ id: number; changes: number }> {
+// Internal promisified sqlite3 methods (require db parameter)
+function _runAsync(dbInstance: sqlite3.Database, sql: string, params: any[] = []): Promise<{ id: number; changes: number }> {
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
+    dbInstance.run(sql, params, function (err) {
       if (err) reject(err)
       else resolve({ id: this.lastID, changes: this.changes })
     })
   })
 }
 
-function getAsync(db: sqlite3.Database, sql: string, params: any[] = []): Promise<any> {
+function _getAsync(dbInstance: sqlite3.Database, sql: string, params: any[] = []): Promise<any> {
   return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
+    dbInstance.get(sql, params, (err, row) => {
       if (err) reject(err)
       else resolve(row)
     })
   })
 }
 
-function allAsync(db: sqlite3.Database, sql: string, params: any[] = []): Promise<any[]> {
+function _allAsync(dbInstance: sqlite3.Database, sql: string, params: any[] = []): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
+    dbInstance.all(sql, params, (err, rows) => {
       if (err) reject(err)
       else resolve(rows)
     })
   })
 }
 
-function execAsync(db: sqlite3.Database, sql: string): Promise<void> {
+function _execAsync(dbInstance: sqlite3.Database, sql: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    db.exec(sql, (err) => {
+    dbInstance.exec(sql, (err) => {
       if (err) reject(err)
       else resolve()
     })
@@ -54,11 +54,11 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     try {
-      console.log("[v0] Inicializando base de datos SQLite en:", dbPath)
+      console.log("[DB] Inicializando base de datos SQLite en:", dbPath)
 
       const newDb = new sqlite3.Database(dbPath, async (err) => {
         if (err) {
-          console.error("[v0] Error abriendo base de datos:", err)
+          console.error("[DB] Error abriendo base de datos:", err)
           reject(err)
           return
         }
@@ -74,6 +74,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               last_name VARCHAR(100),
               role VARCHAR(20) CHECK (role IN ('owner', 'artist', 'organizer', 'admin')),
               phone VARCHAR(20),
+              is_active BOOLEAN DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -108,13 +109,14 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               capacity INTEGER,
               description TEXT,
               business_hours VARCHAR(255),
-              business_hours_data TEXT,
+              business_hours_data TEXT DEFAULT '[]',
               additional_services TEXT,
-              services TEXT,
+              services TEXT DEFAULT '[]',
               policies TEXT,
               cuit_cuil VARCHAR(20),
               profile_image TEXT,
               featured_image TEXT,
+              gallery_images TEXT DEFAULT '[]',
               is_published BOOLEAN DEFAULT 0,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -169,7 +171,12 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               title VARCHAR(255),
               description TEXT,
               booking_date DATETIME,
-              status VARCHAR(20) CHECK (status IN ('pending', 'accepted', 'rejected', 'completed')) DEFAULT 'pending',
+              event_date DATE,
+              message TEXT,
+              sender_name VARCHAR(255),
+              sender_image TEXT,
+              sender_role VARCHAR(50),
+              status VARCHAR(20) CHECK (status IN ('pending', 'accepted', 'rejected', 'completed', 'cancelled')) DEFAULT 'pending',
               price DECIMAL(10,2),
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -196,10 +203,39 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               booking_id INTEGER,
               rating INTEGER CHECK (rating >= 1 AND rating <= 5),
               comment TEXT,
+              is_visible BOOLEAN DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE CASCADE,
               FOREIGN KEY (reviewed_user_id) REFERENCES users(id) ON DELETE CASCADE,
               FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS reports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              reporter_id INTEGER NOT NULL,
+              reported_user_id INTEGER NOT NULL,
+              reason VARCHAR(100) NOT NULL,
+              description TEXT NOT NULL,
+              status VARCHAR(20) CHECK (status IN ('pending', 'under_review', 'resolved', 'dismissed')) DEFAULT 'pending',
+              admin_notes TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+              FOREIGN KEY (reported_user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS support_tickets (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              subject VARCHAR(255) NOT NULL,
+              category VARCHAR(100) NOT NULL,
+              message TEXT NOT NULL,
+              priority VARCHAR(20) CHECK (priority IN ('low', 'medium', 'high', 'urgent')) DEFAULT 'medium',
+              status VARCHAR(20) CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
+              admin_response TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS notifications (
@@ -216,6 +252,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
             );
 
             CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+            CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
             CREATE INDEX IF NOT EXISTS idx_profiles_user ON profiles(user_id);
             CREATE INDEX IF NOT EXISTS idx_owner_profiles_user ON owner_profiles(user_id);
             CREATE INDEX IF NOT EXISTS idx_artist_profiles_user ON artist_profiles(user_id);
@@ -229,51 +266,90 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
             CREATE INDEX IF NOT EXISTS idx_messages_receiver_id ON messages(receiver_id);
             CREATE INDEX IF NOT EXISTS idx_reviews_reviewer_id ON reviews(reviewer_id);
             CREATE INDEX IF NOT EXISTS idx_reviews_reviewed_user ON reviews(reviewed_user_id);
+            CREATE INDEX IF NOT EXISTS idx_reviews_visible ON reviews(is_visible);
+            CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+            CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id);
+            CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
             CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
             CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
           `
 
-          await execAsync(newDb, schema)
+          await _execAsync(newDb, schema)
+
+          const crypto = await import("crypto")
+          const adminPasswordHash = crypto
+            .createHash("sha256")
+            .update("Redshow" + "default")
+            .digest("hex")
+
+          const existingAdmin = await _getAsync(newDb, "SELECT id FROM users WHERE email = ?", ["cgarcia@pioix.edu.ar"])
+
+          if (!existingAdmin) {
+            console.log("[DB] Creando usuario administrador por defecto...")
+
+            await _runAsync(
+              newDb,
+              `INSERT INTO users (email, password, first_name, last_name, role, phone, is_active, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`,
+              ["cgarcia@pioix.edu.ar", adminPasswordHash, "Carlos", "Garcia", "admin", "1234567890"],
+            )
+
+            const adminUser = await _getAsync(newDb, "SELECT id FROM users WHERE email = ?", ["cgarcia@pioix.edu.ar"])
+
+            if (adminUser) {
+              await _runAsync(
+                newDb,
+                `INSERT INTO profiles (user_id, bio, location, verified, created_at, updated_at)
+                 VALUES (?, ?, ?, 1, datetime('now'), datetime('now'))`,
+                [adminUser.id, "Administrador Principal de Red Show - Sistema de Gestion", "Buenos Aires, Argentina"],
+              )
+
+              console.log("[DB] Usuario administrador creado exitosamente")
+              console.log("[DB] Email: cgarcia@pioix.edu.ar")
+              console.log("[DB] Contrasena: Redshow")
+            }
+          } else {
+            console.log("[DB] Usuario administrador ya existe en la base de datos")
+          }
 
           db = newDb
           initialized = true
-          console.log("[v0] Base de datos SQLite inicializada correctamente")
-          console.log(
-            "[v0] Tablas creadas: users, profiles, owner_profiles, artist_profiles, events, bookings, messages, reviews, notifications",
-          )
+          console.log("[DB] Base de datos SQLite inicializada correctamente")
           resolve()
         } catch (initError) {
-          console.error("[v0] Error inicializando schema:", initError)
+          console.error("[DB] Error inicializando schema:", initError)
           reject(initError)
         }
       })
     } catch (error) {
-      console.error("[v0] Error creando base de datos:", error)
+      console.error("[DB] Error creando base de datos:", error)
       reject(error)
     }
   })
 }
 
-export async function runQuery(sql: string, params: any[] = []): Promise<{ id: number; changes: number }> {
+// Exported wrapper functions - these handle db initialization automatically
+// API routes import these directly: import { runAsync, getAsync, allAsync } from "@/lib/db"
+
+export async function runAsync(sql: string, params: any[] = []): Promise<{ id: number; changes: number }> {
   if (!db) await initializeDatabaseIfNeeded()
   if (!db) throw new Error("Database not initialized")
-
-  return runAsync(db, sql, params)
+  return _runAsync(db, sql, params)
 }
 
-export async function getQuery(sql: string, params: any[] = []): Promise<any> {
+export async function getAsync(sql: string, params: any[] = []): Promise<any> {
   if (!db) await initializeDatabaseIfNeeded()
   if (!db) throw new Error("Database not initialized")
-
-  return getAsync(db, sql, params)
+  return _getAsync(db, sql, params)
 }
 
-export async function allQuery(sql: string, params: any[] = []): Promise<any[]> {
+export async function allAsync(sql: string, params: any[] = []): Promise<any[]> {
   if (!db) await initializeDatabaseIfNeeded()
   if (!db) throw new Error("Database not initialized")
-
-  return allAsync(db, sql, params)
+  return _allAsync(db, sql, params)
 }
 
-// Export aliases to match existing API
-export { runQuery as runAsync, getQuery as getAsync, allQuery as allAsync, allQuery as getAllAsync }
+// Legacy aliases for backward compatibility
+export const runQuery = runAsync
+export const getQuery = getAsync
+export const allQuery = allAsync

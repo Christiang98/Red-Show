@@ -4,12 +4,13 @@ import { ProtectedRoute } from "@/components/protectedRoute"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Check, X, Calendar, MessageSquare, Star } from "lucide-react"
+import { Bell, Check, X, Calendar, MessageSquare, Star, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
+import { getCurrentUser } from "@/lib/auth"
 
 interface Notification {
   id: number
@@ -17,24 +18,32 @@ interface Notification {
   title: string
   message: string
   read: boolean
-  createdAt: string
-  relatedId?: number
-  relatedType?: string
+  created_at: string
+  related_id?: number
+  related_type?: string
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("Error fetching notifications")
+  return res.json()
+}
 
 export default function NotificationsPage() {
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    const userData = localStorage.getItem("userData")
-    if (userData) {
-      setUser(JSON.parse(userData).user)
+    const currentUser = getCurrentUser()
+    if (currentUser) {
+      setUser(currentUser)
     }
   }, [])
 
-  const { data, error, mutate } = useSWR(user ? `/api/notifications?userId=${user.id}` : null, fetcher)
+const { data, error, isLoading, mutate } = useSWR(
+    user ? `/api/notifications?userId=${user.id}` : null,
+    fetcher,
+    { refreshInterval: 10000 },
+  )
 
   const notifications: Notification[] = data?.notifications || []
 
@@ -47,11 +56,12 @@ export default function NotificationsPage() {
       })
       mutate()
     } catch (error) {
-      console.error("[v0] Error marcando notificación:", error)
+      console.error("[v0] Error marcando notificacion:", error)
     }
   }
 
   const markAllAsRead = async () => {
+    if (!user) return
     try {
       await fetch(`/api/notifications/mark-all-read?userId=${user.id}`, {
         method: "POST",
@@ -80,9 +90,9 @@ export default function NotificationsPage() {
   }
 
   const getLink = (notification: Notification) => {
-    switch (notification.relatedType) {
+    switch (notification.related_type) {
       case "booking":
-        return `/bookings/${notification.relatedId}`
+        return `/bookings`
       case "message":
         return `/messaging`
       case "review":
@@ -92,7 +102,20 @@ export default function NotificationsPage() {
     }
   }
 
-  if (!user) return null
+  if (!user) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-background">
+          <AppNavbar />
+          <main className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          </main>
+        </div>
+      </ProtectedRoute>
+    )
+  }
 
   return (
     <ProtectedRoute>
@@ -108,12 +131,29 @@ export default function NotificationsPage() {
               </div>
               {notifications.some((n) => !n.read) && (
                 <button onClick={markAllAsRead} className="text-sm text-primary hover:underline">
-                  Marcar todas como leídas
+                  Marcar todas como leidas
                 </button>
               )}
             </div>
 
-            {notifications.length === 0 ? (
+            {isLoading ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                  <p className="text-muted-foreground">Cargando notificaciones...</p>
+                </CardContent>
+              </Card>
+            ) : error ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Bell className="h-12 w-12 text-destructive mb-4" />
+                  <p className="text-destructive">Error cargando notificaciones</p>
+                  <button onClick={() => mutate()} className="mt-2 text-sm text-primary hover:underline">
+                    Reintentar
+                  </button>
+                </CardContent>
+              </Card>
+            ) : notifications.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Bell className="h-12 w-12 text-muted-foreground mb-4" />
@@ -126,9 +166,9 @@ export default function NotificationsPage() {
                   const link = getLink(notification)
                   const content = (
                     <Card
-                      key={notification.id} // Added key property
+                      key={notification.id}
                       className={`cursor-pointer hover:border-primary transition-colors ${
-                        !notification.read ? "bg-muted/30" : ""
+                        !notification.read ? "bg-muted/30 border-primary/30" : ""
                       }`}
                       onClick={() => !notification.read && markAsRead(notification.id)}
                     >
@@ -145,7 +185,7 @@ export default function NotificationsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
                           <p className="text-xs text-muted-foreground mt-2">
-                            {format(new Date(notification.createdAt), "PPP 'a las' p", { locale: es })}
+                            {notification.created_at ? format(new Date(notification.created_at), "PPP 'a las' p", { locale: es }) : "Fecha no disponible"}
                           </p>
                         </div>
                       </CardContent>

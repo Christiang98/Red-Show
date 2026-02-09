@@ -21,11 +21,29 @@ export default function BookingsPage() {
 
   const { data: bookings, mutate } = useSWR(user ? `/api/bookings?userId=${user.id}` : null, fetcher)
 
-  const sentBookings =
-    bookings?.filter((b: any) => (user?.role === "artist" ? b.artist_id === user.id : b.owner_id === user.id)) || []
+  // Filtrar solicitudes: las que envie yo vs las que recibo
+  // Uso sender_role para determinar quien envio la solicitud
+  const sentBookings = bookings?.filter((b: any) => {
+    // Si yo soy el que tiene el mismo ID que el sender (basado en sender_role)
+    if (b.sender_role === "artist") {
+      return b.artist_id === user?.id
+    } else if (b.sender_role === "owner") {
+      return b.owner_id === user?.id
+    }
+    // Fallback: si no hay sender_role, usar la logica anterior
+    return user?.role === "artist" ? b.artist_id === user?.id : b.owner_id === user?.id
+  }) || []
 
-  const receivedBookings =
-    bookings?.filter((b: any) => (user?.role === "artist" ? b.owner_id === user.id : b.artist_id === user.id)) || []
+  const receivedBookings = bookings?.filter((b: any) => {
+    // Si yo NO soy el que envio
+    if (b.sender_role === "artist") {
+      return b.owner_id === user?.id
+    } else if (b.sender_role === "owner") {
+      return b.artist_id === user?.id
+    }
+    // Fallback
+    return user?.role === "artist" ? b.owner_id === user?.id : b.artist_id === user?.id
+  }) || []
 
   const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
     try {
@@ -35,8 +53,8 @@ export default function BookingsPage() {
         body: JSON.stringify({ status: newStatus }),
       })
       mutate()
-    } catch (error) {
-      console.error("[v0] Error actualizando booking:", error)
+    } catch {
+      // Error silencioso
     }
   }
 
