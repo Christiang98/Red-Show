@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { compressImage } from "@/lib/image-utils"
-import { Upload, X, Check, Clock, Calendar, ImageIcon, ArrowLeft } from "lucide-react"
+import { Upload, X, Check, Clock, Calendar, ImageIcon } from "lucide-react"
 import { getCurrentUser } from "@/lib/auth"
-import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -20,12 +19,15 @@ interface ArtistProfileData {
   otherCategory: string
   serviceType: string
   priceRange: string
+  priceMin: string
+  priceMax: string
   bio: string
   experienceYears: number
   portfolioUrl: string
   instagram: string
   tiktok: string
   otherSocial: string
+  phone: string
   location: string
   neighborhood: string
   availability: {
@@ -35,6 +37,7 @@ interface ArtistProfileData {
     to: string
   }[]
   profileImage: string | null
+  featuredImage: string | null
   portfolioImages: string[]
   isPublished: boolean
 }
@@ -51,16 +54,20 @@ export function ArtistProfileForm() {
     otherCategory: "",
     serviceType: "",
     priceRange: "",
+    priceMin: "",
+    priceMax: "",
     bio: "",
     experienceYears: 0,
     portfolioUrl: "",
     instagram: "",
     tiktok: "",
     otherSocial: "",
+    phone: "",
     location: "",
     neighborhood: "",
     availability: DAYS_OF_WEEK.map((day) => ({ day, enabled: false, from: "09:00", to: "18:00" })),
     profileImage: null,
+    featuredImage: null,
     portfolioImages: [],
     isPublished: false,
   })
@@ -88,16 +95,20 @@ export function ArtistProfileForm() {
           otherCategory: data.specificProfile.other_category || "",
           serviceType: data.specificProfile.service_type || "",
           priceRange: data.specificProfile.price_range || "",
+          priceMin: data.specificProfile.price_min || "",
+          priceMax: data.specificProfile.price_max || "",
           bio: data.specificProfile.bio || "",
           experienceYears: data.specificProfile.experience_years || 0,
           portfolioUrl: data.specificProfile.portfolio_url || "",
           instagram: data.profile?.instagram || "",
           tiktok: data.profile?.tiktok || "",
           otherSocial: data.profile?.other_social || "",
+          phone: data.profile?.phone || "",
           location: data.profile?.location || "",
           neighborhood: data.specificProfile.neighborhood || "",
           availability: availabilityData,
           profileImage: data.specificProfile.profile_image || null,
+          featuredImage: data.specificProfile.featured_image || null,
           portfolioImages: data.specificProfile.portfolio_images
             ? JSON.parse(data.specificProfile.portfolio_images)
             : [],
@@ -124,16 +135,19 @@ export function ArtistProfileForm() {
     }))
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    fieldName: "profileImage" | "featuredImage" = "profileImage",
+  ) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
-      const compressed = await compressImage(file, 400)
-      setFormData((prev) => ({ ...prev, profileImage: compressed }))
+      const compressed = await compressImage(file, fieldName === "profileImage" ? 400 : 1200)
+      setFormData((prev) => ({ ...prev, [fieldName]: compressed }))
       toast({
         title: "Imagen cargada",
-        description: "La imagen de perfil se ha procesado correctamente",
+        description: "La imagen se ha procesado correctamente",
       })
     } catch (error) {
       toast({
@@ -142,6 +156,10 @@ export function ArtistProfileForm() {
         variant: "destructive",
       })
     }
+  }
+
+  const removeImage = (fieldName: "profileImage" | "featuredImage") => {
+    setFormData((prev) => ({ ...prev, [fieldName]: null }))
   }
 
   const handlePortfolioImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,7 +218,7 @@ export function ArtistProfileForm() {
             bio: formData.bio,
             location: formData.location,
             avatarUrl: formData.profileImage,
-            phone: "",
+            phone: formData.phone,
             instagram: formData.instagram,
             tiktok: formData.tiktok,
             otherSocial: formData.otherSocial,
@@ -211,12 +229,15 @@ export function ArtistProfileForm() {
             otherCategory: formData.otherCategory,
             serviceType: formData.serviceType,
             priceRange: formData.priceRange,
+            priceMin: formData.priceMin,
+            priceMax: formData.priceMax,
             bio: formData.bio,
             experienceYears: formData.experienceYears,
             portfolioUrl: formData.portfolioUrl,
             neighborhood: formData.neighborhood,
             availability: JSON.stringify(formData.availability),
             profileImage: formData.profileImage,
+            featuredImage: formData.featuredImage,
             portfolioImages: JSON.stringify(formData.portfolioImages),
             isPublished: formData.isPublished,
           },
@@ -251,14 +272,6 @@ export function ArtistProfileForm() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-2">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/my-profile">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a mi perfil
-          </Link>
-        </Button>
-      </div>
       <Card className="p-8">
         <h2 className="text-2xl font-bold text-primary mb-6">Perfil de Artista Emprendedor</h2>
 
@@ -320,32 +333,27 @@ export function ArtistProfileForm() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Servicio y Tarifas</h3>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Tipo de Servicio</label>
-                <Input
-                  type="text"
-                  name="serviceType"
-                  value={formData.serviceType}
-                  onChange={handleInputChange}
-                  placeholder="Ej: Shows en vivo, sesiones privadas"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Rango de Precios</label>
-                <select
-                  name="priceRange"
-                  value={formData.priceRange}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
-                >
-                  <option value="">Selecciona un rango</option>
-                  <option value="budget">Economico ($ - $$)</option>
-                  <option value="moderate">Moderado ($$ - $$$)</option>
-                  <option value="premium">Premium ($$$ - $$$$)</option>
-                  <option value="luxury">Lujo ($$$$+)</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Tipo de Servicio</label>
+              <Input
+                type="text"
+                name="serviceType"
+                value={formData.serviceType}
+                onChange={handleInputChange}
+                placeholder="Ej: Shows en vivo, sesiones privadas"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Precio / Tarifa</label>
+              <Input
+                type="text"
+                name="priceRange"
+                value={formData.priceRange}
+                onChange={handleInputChange}
+                placeholder="Ej: $50.000 por show, $80.000 por evento completo"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Escribe tu precio o tarifa como prefieras. Es referencial y puede variar segun el evento.</p>
             </div>
           </div>
 
@@ -393,9 +401,20 @@ export function ArtistProfileForm() {
             </div>
           </div>
 
-          {/* Redes Sociales */}
+          {/* Redes Sociales y Contacto */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Redes Sociales</h3>
+            <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Redes Sociales y Contacto</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Telefono de Contacto</label>
+              <Input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="+54 9 11 1234-5678"
+              />
+            </div>
 
             <div className="grid md:grid-cols-3 gap-4">
               <div>
@@ -517,30 +536,67 @@ export function ArtistProfileForm() {
               <h3 className="text-lg font-semibold text-foreground">Imagenes</h3>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Imagen de Perfil</label>
-              <p className="text-xs text-muted-foreground mb-3">Esta imagen aparecera en los resultados de busqueda</p>
-              {formData.profileImage ? (
-                <div className="relative inline-block">
-                  <img
-                    src={formData.profileImage || "/placeholder.svg"}
-                    alt="Perfil"
-                    className="w-32 h-32 object-cover rounded-full border-4 border-primary/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, profileImage: null }))}
-                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground p-1.5 rounded-full hover:bg-destructive/90"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-primary/50 rounded-full cursor-pointer hover:bg-primary/5 transition-colors">
-                  <Upload className="h-8 w-8 text-primary" />
-                  <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                </label>
-              )}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Imagen de perfil */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Imagen de Perfil</label>
+                <p className="text-xs text-muted-foreground mb-3">Esta imagen aparecera en los resultados de busqueda</p>
+                {formData.profileImage ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={formData.profileImage || "/placeholder.svg"}
+                      alt="Perfil"
+                      className="w-32 h-32 object-cover rounded-full border-4 border-primary/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage("profileImage")}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground p-1.5 rounded-full hover:bg-destructive/90"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-primary/50 rounded-full cursor-pointer hover:bg-primary/5 transition-colors">
+                    <Upload className="h-8 w-8 text-primary" />
+                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, "profileImage")} className="hidden" />
+                  </label>
+                )}
+              </div>
+
+              {/* Imagen destacada / portada */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Imagen Destacada (Portada)</label>
+                <p className="text-xs text-muted-foreground mb-3">Imagen de cabecera para tu perfil publico, distinta a tu foto de perfil</p>
+                {formData.featuredImage ? (
+                  <div className="relative">
+                    <img
+                      src={formData.featuredImage || "/placeholder.svg"}
+                      alt="Destacada"
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage("featuredImage")}
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-2 rounded-full hover:bg-destructive/90"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-primary/50 rounded-lg cursor-pointer hover:bg-primary/5 transition-colors">
+                    <Upload className="h-12 w-12 text-primary mb-2" />
+                    <span className="text-sm text-primary font-medium">Subir imagen destacada</span>
+                    <span className="text-xs text-muted-foreground mt-1">JPG, PNG hasta 5MB</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, "featuredImage")}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <div>

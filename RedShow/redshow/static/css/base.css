@@ -1,0 +1,135 @@
+/* ============================
+   Variables de Colores
+============================ */
+:root {
+    --primary-color: #e74c3c; /* Rojo vibrante */
+    --secondary-color: #2c3e50; /* Azul oscuro */
+    --accent-color: #f39c12; /* Naranja */
+    --bg-light: #f8f9fa;
+}
+
+/* ============================
+   Body y tipografía
+============================ */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-light);
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ============================
+   Navbar
+============================ */
+.navbar-brand {
+    font-weight: bold;
+    color: var(--primary-color) !important;
+    font-size: 1.5rem;
+}
+
+.navbar-nav .nav-link {
+    color: var(--secondary-color) !important;
+    font-weight: 500;
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--primary-color) !important;
+}
+
+/* ============================
+   Botones
+============================ */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #c0392b;
+    border-color: #c0392b;
+}
+
+.btn-success {
+    background-color: #27ae60;
+    border-color: #27ae60;
+}
+
+.btn-success:hover {
+    background-color: #1e8449;
+    border-color: #1e8449;
+}
+
+.btn-warning {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.btn-warning:hover {
+    background-color: #e67e22;
+    border-color: #e67e22;
+}
+
+/* ============================
+   Cards
+============================ */
+.card {
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+/* ============================
+   Form Inputs
+============================ */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(231, 76, 60, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+/* ============================
+   Alerts
+============================ */
+.alert {
+    border-radius: 10px;
+}
+
+/* ============================
+   Footer
+============================ */
+.footer {
+    background-color: var(--secondary-color);
+    color: white;
+    margin-top: 50px;
+}
+
+/* ============================
+   Imágenes
+============================ */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ============================
+   Badges
+============================ */
+.badge {
+    font-weight: 500;
+}
+
+/* ============================
+   Otros
+============================ */
+.rounded-circle {
+    object-fit: cover;
+}

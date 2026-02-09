@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { compressImage } from "@/lib/image-utils"
-import { Upload, X, Check, ImageIcon, Clock, Calendar, ArrowLeft } from "lucide-react"
+import { Upload, X, Check, ImageIcon, Clock, Calendar } from "lucide-react"
 import { getCurrentUser } from "@/lib/auth"
-import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -291,14 +290,6 @@ export function OwnerProfileForm() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-2">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/my-profile">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a mi perfil
-          </Link>
-        </Button>
-      </div>
       <Card className="p-8">
         <h2 className="text-2xl font-bold text-primary mb-6">Perfil del Establecimiento</h2>
 

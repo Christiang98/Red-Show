@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Iniciar Sesión - Red Show{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}">
+
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo-container">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h2>Red Show</h2>
+                <p>Conecta tu talento con los mejores espacios</p>
+            </div>
+
+            <div class="login-body">
+                <form method="post" class="login-form">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">
+                            <i class="fas fa-user"></i>
+                            Usuario o Email
+                        </label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="field-error">{{ form.username.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">
+                            <i class="fas fa-lock"></i>
+                            Contraseña
+                        </label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="field-error">{{ form.password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-login">
+                            <span class="btn-text">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Entrar
+                            </span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="register-link">
+                    <p>¿No tienes cuenta? 
+                        <a href="{% url 'register' %}" class="link-register">Regístrate aquí</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+

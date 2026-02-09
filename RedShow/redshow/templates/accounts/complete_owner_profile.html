@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Completar Perfil - Establecimiento{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/complete_owner_profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="profile-container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <i class="fas fa-building"></i>
+                <h2>Completa tu Perfil de Establecimiento</h2>
+                <p>Cuéntanos sobre tu local y lo que ofreces</p>
+            </div>
+
+            <div class="profile-body">
+                <form method="post" class="profile-form">
+                    {% csrf_token %}
+
+                    <!-- Nombre del negocio -->
+                    <div class="form-group">
+                        <label for="id_business_name">
+                            <i class="fas fa-store"></i> Nombre del Negocio
+                        </label>
+                        <input type="text" name="business_name" id="id_business_name" class="form-control" placeholder="Ej: Bar La Esquina">
+                    </div>
+
+                    <!-- Tipo de negocio -->
+                    <div class="form-group">
+                        <label for="id_business_type">
+                            <i class="fas fa-tags"></i> Tipo de Negocio
+                        </label>
+                        <select name="business_type" id="id_business_type" class="form-control">
+                            <option value="">Selecciona un tipo...</option>
+                            <option value="bar">Bar</option>
+                            <option value="pub">Pub</option>
+                            <option value="club">Club</option>
+                            <option value="salon">Salón</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <!-- Dirección -->
+                    <div class="form-group">
+                        <label for="id_address">
+                            <i class="fas fa-map-marker-alt"></i> Dirección
+                        </label>
+                        <input type="text" name="address" id="id_address" class="form-control" placeholder="Ej: Av. Corrientes 1234, CABA">
+                    </div>
+
+                    <!-- Capacidad -->
+                    <div class="form-group">
+                        <label for="id_capacity">
+                            <i class="fas fa-users"></i> Capacidad (personas)
+                        </label>
+                        <input type="number" name="capacity" id="id_capacity" class="form-control" min="1" placeholder="Ej: 200">
+                    </div>
+
+                    <!-- Horarios -->
+                    <div class="form-group">
+                        <label for="id_opening_hours">
+                            <i class="fas fa-clock"></i> Horarios de Funcionamiento
+                        </label>
+                        <input type="text" name="opening_hours" id="id_opening_hours" class="form-control" placeholder="Ej: Lunes a Sábados 18:00 - 04:00">
+                    </div>
+
+                    <!-- Contacto alternativo -->
+                    <div class="form-group">
+                        <label for="id_alternative_contact">
+                            <i class="fas fa-phone-alt"></i> Contacto Alternativo
+                        </label>
+                        <input type="text" name="alternative_contact" id="id_alternative_contact" class="form-control" placeholder="Ej: +54 9 11 1234-5678">
+                    </div>
+
+                    <!-- Servicios adicionales -->
+                    <div class="form-group">
+                        <label for="id_additional_services">
+                            <i class="fas fa-music"></i> Servicios Adicionales
+                        </label>
+                        <textarea name="additional_services" id="id_additional_services" class="form-control" rows="3" placeholder="Ej: sonido, escenario, luces, DJ booth, etc."></textarea>
+                        <small class="help-text">Ej: sonido, escenario, luces, DJ booth, etc.</small>
+                    </div>
+
+                    <!-- Políticas de contratación -->
+                    <div class="form-group">
+                        <label for="id_hiring_policies">
+                            <i class="fas fa-file-contract"></i> Políticas de Contratación
+                        </label>
+                        <textarea name="hiring_policies" id="id_hiring_policies" class="form-control" rows="3" placeholder="Ej: cachet fijo, porcentaje de entradas, consumo mínimo."></textarea>
+                        <small class="help-text">Ej: cachet fijo, porcentaje de entradas, consumo mínimo.</small>
+                    </div>
+
+                    <!-- Botón -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn-complete">
+                            <i class="fas fa-check-circle"></i> Guardar Perfil
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

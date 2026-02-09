@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Red Show{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Alerta de perfil incompleto -->
+{% if not perfil_completo %}
+<div class="alert alert-warning text-center" role="alert">
+    ⚠️ Tu perfil no está completo.
+    {% if user.user_type == 'owner' %}
+        <a href="{% url 'complete_owner_profile' %}" class="alert-link">Completa tu perfil</a>
+    {% else %}
+        <a href="{% url 'complete_artist_profile' %}" class="alert-link">Completa tu perfil</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Header Section -->
+<div class="dashboard-header">
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="welcome-section">
+                    <div class="welcome-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="welcome-text">
+                        <h1 class="welcome-title">¡Hola, {{ user.get_full_name|default:user.username }}!</h1>
+                        <p class="welcome-subtitle">Bienvenido de vuelta a tu espacio creativo</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="user-badge">
+                    {% if user.user_type == 'owner' %}
+                        <i class="fas fa-building"></i>
+                        <span>Propietario</span>
+                    {% else %}
+                        <i class="fas fa-star"></i>
+                        <span>Artista</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard Content -->
+<div class="dashboard-content">
+    <div class="container-fluid">
+        
+        <!-- Stats Cards Row -->
+        <div class="row stats-row">
+            {% if user.user_type == 'owner' %}
+                {% if user.owner_profile %}
+                    <!-- Business Profile Card -->
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="dashboard-card profile-card">
+                            <div class="card-header">
+                                <div class="card-icon business-icon">
+                                    <i class="fas fa-store"></i>
+                                </div>
+                                <div class="card-title-section">
+                                    <h5>Mi Establecimiento</h5>
+                                    <span class="card-subtitle">{{ user.owner_profile.business_name }}</span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <span class="info-label">Tipo</span>
+                                        <span class="info-value">{{ user.owner_profile.business_type }}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Capacidad</span>
+                                        <span class="info-value">{{ user.owner_profile.capacity }} personas</span>
+                                    </div>
+                                </div>
+                                <div class="card-actions d-flex flex-column gap-2">
+                                    <a href="{% url 'editar_perfil' %}" class="btn-modern btn-primary">
+                                        <i class="fas fa-edit"></i>
+                                        Editar Perfil
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reservations Card -->
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="dashboard-card action-card reservations-card">
+                            <div class="card-background">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="card-content">
+                                <div class="action-icon">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <h5>Reservas</h5>
+                                <p>Gestiona las reservas de tu espacio</p>
+                            </div>
+                            <div class="card-footer">
+                                <a href="#" class="btn-modern btn-success">
+                                    Ver Reservas
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Card -->
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="dashboard-card action-card stats-card">
+                            <div class="card-background">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="card-content">
+                                <div class="action-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <h5>Buscar talento</h5>
+                                <p>Busca a tu próximo artista</p>
+                             </div>
+                            <div class="card-footer">
+                                <a href="#" class="btn-modern btn-info">
+                                    Ver Stats
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                {% endif %}
+            {% else %}
+                {% if user.artist_profile %}
+                    <!-- Artist Profile Card -->
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="dashboard-card profile-card">
+                            <div class="card-header">
+                                <div class="card-icon artist-icon">
+                                    <i class="fas fa-microphone"></i>
+                                </div>
+                                <div class="card-title-section">
+                                    <h5>Mi Perfil Artístico</h5>
+                                    <span class="card-subtitle">{{ user.artist_profile.stage_name }}</span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <span class="info-label">Categoría</span>
+                                        <span class="info-value">{{ user.artist_profile.get_category_display }}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Experiencia</span>
+                                        <span class="info-value">{{ user.artist_profile.experience_years }} años</span>
+                                    </div>
+                                </div>
+                                <div class="card-actions d-flex flex-column gap-2">
+                                    <a href="{% url 'editar_perfil' %}" class="btn-modern btn-primary">
+                                        <i class="fas fa-edit"></i>
+                                        Editar Perfil
+                                    </a>
+                            
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search Spaces Card -->
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="dashboard-card action-card search-card">
+                            <div class="card-background">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="card-content">
+                                <div class="action-icon">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <h5>Buscar Espacios</h5>
+                                <p>Descubre lugares increíbles para tu próximo show</p>
+                                <div class="stats-number">127</div>
+                                <span class="stats-label">espacios disponibles</span>
+                            </div>
+                            <div class="card-footer">
+                                <a href="#" class="btn-modern btn-primary">
+                                    Explorar
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- My Shows Card -->
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="dashboard-card action-card shows-card">
+                            <div class="card-background">
+                                <i class="fas fa-music"></i>
+                            </div>
+                            <div class="card-content">
+                                <div class="action-icon">
+                                    <i class="fas fa-music"></i>
+                                </div>
+                                <h5>Mis Shows</h5>
+                                <p>Gestiona tus presentaciones y próximos eventos</p>
+                                <div class="stats-number">3</div>
+                                <span class="stats-label">próximos shows</span>
+                            </div>
+                            <div class="card-footer">
+                                <a href="#" class="btn-modern btn-success">
+                                    Ver Shows
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="quick-actions-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-bolt"></i>
+                        Acciones Rápidas
+                    </h5>
+                    <div class="quick-actions-grid">
+                        {% if user.user_type == 'owner' %}
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                                <span>Crear Evento</span>
+                            </div>
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-cog"></i>
+                                </div>
+                                <span>Estadísticas</span>
+                            </div>
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <span>Mensajes</span>
+                            </div>
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                                <span>Facturación</span>
+                            </div>
+                        {% else %}
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-search-plus"></i>
+                                </div>
+                                <span>Buscar Shows</span>
+                            </div>
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-upload"></i>
+                                </div>
+                                <span>Subir Demo</span>
+                            </div>
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <span>Mi Red</span>
+                            </div>
+                            <div class="quick-action">
+                                <div class="action-icon">
+                                    <i class="fas fa-heart"></i>
+                                </div>
+                                <span>Favoritos</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button -->
+<div class="fab-container">
+    <div class="fab-main">
+        <i class="fas fa-plus"></i>
+    </div>
+    <div class="fab-menu">
+        {% if user.user_type == 'owner' %}
+            <div class="fab-option" data-tooltip="Nueva Reserva">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <div class="fab-option" data-tooltip="Añadir Fotos">
+                <i class="fas fa-camera"></i>
+            </div>
+        {% else %}
+            <div class="fab-option" data-tooltip="Buscar Espacios">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="fab-option" data-tooltip="Nuevo Demo">
+                <i class="fas fa-microphone"></i>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+
+

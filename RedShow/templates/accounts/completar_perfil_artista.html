@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Completar Perfil - Artista{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/complete_artist_profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-complete-container row justify-content-center">
+    <div class="col-lg-9 col-md-10 col-sm-12">
+        <div class="card shadow-lg border-0 rounded-3">
+            <div class="card-header text-center bg-warning text-dark rounded-top">
+                <h3 class="mb-1"><i class="fas fa-star me-2"></i>Completa tu Perfil Artístico</h3>
+                <p class="mb-0 small">Muéstranos tu talento y experiencia</p>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Nombre artístico y Categoría -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.stage_name.id_for_label }}" class="form-label">
+                                <i class="fas fa-microphone me-1"></i>Nombre Artístico / Emprendimiento
+                            </label>
+                            {{ form.stage_name }}
+                            {% if form.stage_name.errors %}
+                                <div class="text-danger">{{ form.stage_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.category.id_for_label }}" class="form-label">
+                                <i class="fas fa-music me-1"></i>Categoría
+                            </label>
+                            <select name="{{ form.category.name }}" id="category_select" class="form-control" required>
+                                <option value="">Seleccione...</option>
+                                <option value="Cantante">Cantante</option>
+                                <option value="Músico">Músico</option>
+                                <option value="Bailarín">Bailarín</option>
+                                <option value="DJ">DJ</option>
+                                <option value="Actor/Actriz">Actor/Actriz</option>
+                                <option value="Comediante">Comediante</option>
+                                <option value="Ilustrador/Dibujante">Ilustrador/Dibujante</option>
+                                <option value="Fotógrafo">Fotógrafo</option>
+                                <option value="Productor">Productor</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                            <input type="text" id="other_category" name="other_category" class="form-control mt-2" placeholder="Especifique la categoría" style="display:none;">
+                            {% if form.category.errors %}
+                                <div class="text-danger">{{ form.category.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Tipo de servicio / disciplina -->
+                    <div class="mb-3">
+                        <label for="service_type" class="form-label">
+                            <i class="fas fa-tools me-1"></i>Tipo de Servicio / Disciplina
+                        </label>
+                        <input type="text" id="service_type" name="service_type" class="form-control" placeholder="Ej: Clases de guitarra, Fotografía de eventos" required>
+                        <small class="form-text text-muted">Indique su disciplina o servicio principal.</small>
+                    </div>
+
+                    <!-- Rango de precios / Tarifas -->
+                    <div class="mb-3">
+                        <label for="price_range" class="form-label">
+                            <i class="fas fa-dollar-sign me-1"></i>Rango de Precios / Tarifas
+                        </label>
+                        <input type="text" id="price_range" name="price_range" class="form-control" placeholder="Ej: $500 - $1500" required>
+                        <small class="form-text text-muted">Indique su rango de precios aproximado.</small>
+                    </div>
+
+                    <!-- Biografía -->
+                    <div class="mb-3">
+                        <label for="{{ form.bio.id_for_label }}" class="form-label">
+                            <i class="fas fa-user me-1"></i>Breve descripción
+                        </label>
+                        {{ form.bio }}
+                        <small class="form-text text-muted">Cuéntanos sobre tu estilo, logros y experiencia.</small>
+                        {% if form.bio.errors %}
+                            <div class="text-danger">{{ form.bio.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Experiencia y Portfolio -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.experience_years.id_for_label }}" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Años de Experiencia
+                            </label>
+                            {{ form.experience_years }}
+                            {% if form.experience_years.errors %}
+                                <div class="text-danger">{{ form.experience_years.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.portfolio_url.id_for_label }}" class="form-label">
+                                <i class="fas fa-globe me-1"></i>Portfolio / Website
+                            </label>
+                            {{ form.portfolio_url }}
+                            {% if form.portfolio_url.errors %}
+                                <div class="text-danger">{{ form.portfolio_url.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Redes sociales -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.instagram.id_for_label }}" class="form-label">
+                                <i class="fab fa-instagram me-1"></i>Instagram
+                            </label>
+                            {{ form.instagram }}
+                            <small class="form-text text-muted">Solo el nombre de usuario</small>
+                            {% if form.instagram.errors %}
+                                <div class="text-danger">{{ form.instagram.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.tiktok.id_for_label }}" class="form-label">
+                                <i class="fab fa-tiktok me-1"></i>TikTok
+                            </label>
+                            {{ form.tiktok }}
+                            <small class="form-text text-muted">Solo el nombre de usuario</small>
+                            {% if form.tiktok.errors %}
+                                <div class="text-danger">{{ form.tiktok.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.other_socials.id_for_label }}" class="form-label">
+                                <i class="fas fa-share-alt me-1"></i>Otras Redes
+                            </label>
+                            {{ form.other_socials }}
+                            {% if form.other_socials.errors %}
+                                <div class="text-danger">{{ form.other_socials.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Ubicación y Barrio -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">
+                                <i class="fas fa-map-marker-alt me-1"></i>Ciudad / Provincia
+                            </label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                                <div class="text-danger">{{ form.location.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.neighborhood.id_for_label }}" class="form-label">
+                                <i class="fas fa-home me-1"></i>Barrio
+                            </label>
+                            {{ form.neighborhood }}
+                            {% if form.neighborhood.errors %}
+                                <div class="text-danger">{{ form.neighborhood.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Disponibilidad por días y horarios -->
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fas fa-clock me-1"></i>Disponibilidad horaria</label>
+                        <small class="form-text text-muted">Seleccione los días y complete los horarios</small>
+                        {% for day in days_of_week %}
+                        <div class="availability-day mb-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input day-checkbox" type="checkbox" data-day="{{ day }}" id="day_{{ day }}">
+                                <label class="form-check-label" for="day_{{ day }}">{{ day }}</label>
+                            </div>
+                            <div class="time-range d-flex gap-2 mt-1">
+                                <input type="time" name="from_{{ day }}" class="form-control form-control-sm time-input" id="from_{{ day }}" disabled>
+                                <input type="time" name="to_{{ day }}" class="form-control form-control-sm time-input" id="to_{{ day }}" disabled>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Botón -->
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">
+                            <i class="fas fa-check me-2"></i>Completar Perfil
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JS para activar/desactivar horarios y mostrar campo "Otro" -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Horarios
+    const checkboxes = document.querySelectorAll(".day-checkbox");
+    checkboxes.forEach(cb => {
+        cb.addEventListener("change", function() {
+            const day = cb.dataset.day;
+            const fromInput = document.getElementById("from_" + day);
+            const toInput = document.getElementById("to_" + day);
+            fromInput.disabled = !cb.checked;
+            toInput.disabled = !cb.checked;
+        });
+    });
+
+    // Categoría Otro
+    const categorySelect = document.getElementById("category_select");
+    const otherInput = document.getElementById("other_category");
+    categorySelect.addEventListener("change", function() {
+        if (this.value === "Otro") {
+            otherInput.style.display = "block";
+            otherInput.required = true;
+        } else {
+            otherInput.style.display = "none";
+            otherInput.required = false;
+        }
+    });
+});
+</script>
+
+{% endblock %}
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,262 @@
+/* ================================
+   VER PERFIL STYLES - DASHBOARD LOOK
+   ================================ */
+
+:root {
+  --primary-color: #6366f1;
+  --primary-dark: #4f46e5;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --info-color: #06b6d4;
+  --danger-color: #ef4444;
+
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+body {
+  background: var(--bg-primary);
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+}
+
+/* -------------------------------
+   PROFILE CARD HEADER
+---------------------------------*/
+.profile-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Foto de perfil circular */
+.profile-card .perfil-foto-container {
+  flex-shrink: 0;
+}
+
+.profile-card .perfil-foto {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary-color);
+}
+
+.profile-card .perfil-foto.default {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  border: 3px solid var(--primary-color);
+}
+
+/* Título y subtítulo */
+.card-title-section h5 {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-title-section .card-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Botón editar */
+.btn-modern.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-modern.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-modern.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-modern.btn-primary:hover::before {
+  left: 100%;
+}
+
+/* -------------------------------
+   INFO GRID
+---------------------------------*/
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.info-item {
+  background: var(--bg-secondary);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.info-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* -------------------------------
+   GALERÍA - Fotos completas
+---------------------------------*/
+.galeria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.galeria-item {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 150px; /* altura fija */
+}
+
+.galeria-item img,
+.galeria-item video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* ahora se ve completa */
+  display: block; /* color de fondo para espacios vacíos */
+}
+
+.galeria-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* -------------------------------
+   CARD CONTENT
+---------------------------------*/
+.card-content {
+  padding: 1.5rem;
+}
+
+/* -------------------------------
+   RESPONSIVE
+---------------------------------*/
+@media (max-width:768px){
+  .profile-card .card-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+  .btn-modern.btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  .galeria-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width:576px){
+  .galeria-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -------------------------------
+   DARK MODE
+---------------------------------*/
+@media (prefers-color-scheme: dark){
+  :root {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+  }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .profile-card .card-header {
+    background: #1e293b;
+  }
+
+  .info-item {
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .galeria-item {
+    background: var(--bg-secondary);
+  }
+
+  .btn-modern.btn-primary {
+    color: white;
+  }
+}

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Perfil - Red Show{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/editar_perfil.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="editar-perfil-container row justify-content-center">
+    <div class="col-md-9">
+        <div class="card shadow-lg border-0 rounded-3">
+            <div class="card-header bg-primary text-white text-center rounded-top">
+                <h3 class="mb-0"><i class="fas fa-user-edit me-2"></i>Editar Perfil</h3>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Información Personal -->
+                    <h5 class="section-title"><i class="fas fa-user me-2"></i>Información Personal</h5>
+                    {% for field in user_form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger small">{{ field.errors }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <!-- Información de Perfil -->
+                    <h5 class="section-title mt-4"><i class="fas fa-id-card me-2"></i>Información de Perfil</h5>
+                    {% for field in perfil_form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger small">{{ field.errors }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <!-- Subida de Medios -->
+                    <h5 class="section-title mt-4"><i class="fas fa-photo-video me-2"></i>Medios (Fotos y Videos)</h5>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Archivo</label>
+                        {{ media_form.file }}
+                        {% if media_form.file.errors %}
+                            <div class="text-danger small">{{ media_form.file.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo de Medio</label>
+                        {{ media_form.media_type }}
+                        {% if media_form.media_type.errors %}
+                            <div class="text-danger small">{{ media_form.media_type.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm">
+                            <i class="fas fa-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Medios Existentes -->
+                {% if user.media.all %}
+                    <hr class="my-5">
+                    <h5 class="section-title mb-3"><i class="fas fa-images me-2"></i>Medios Subidos</h5>
+                    <div class="row">
+                        {% for media in user.media.all %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card border-0 shadow-sm">
+                                    {% if media.media_type == 'image' %}
+                                        <img src="{{ media.file.url }}" class="card-img-top rounded" alt="Imagen">
+                                    {% elif media.media_type == 'video' %}
+                                        <video class="w-100 rounded" controls>
+                                            <source src="{{ media.file.url }}">
+                                            Tu navegador no soporta videos.
+                                        </video>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

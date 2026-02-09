@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Completar Perfil - Establecimiento{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/complete_owner_profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="profile-container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <i class="fas fa-building"></i>
+                <h2>Completa tu Perfil de Establecimiento</h2>
+                <p>Cuéntanos sobre tu local y lo que ofreces</p>
+            </div>
+
+            <div class="profile-body">
+                <form method="post" class="profile-form">
+                    {% csrf_token %}
+
+                    <!-- Nombre del negocio -->
+                    <div class="form-group">
+                        <label for="id_business_name"><i class="fas fa-store"></i> Nombre del Negocio</label>
+                        <input type="text" name="business_name" id="id_business_name" class="form-control" placeholder="Ej: Bar La Esquina">
+                    </div>
+
+                    <!-- Tipo de negocio -->
+                    <div class="form-group">
+                        <label for="id_business_type"><i class="fas fa-tags"></i> Tipo de Negocio</label>
+                        <select name="business_type" id="id_business_type" class="form-control" onchange="toggleOtherBusinessType()">
+                            <option value="">Selecciona un tipo...</option>
+                            <option value="bar">Bar</option>
+                            <option value="club">Club</option>
+                            <option value="salon">Salón</option>
+                            <option value="restaurante">Restaurante</option>
+                            <option value="cafe_confiteria">Café / Confitería</option>
+                            <option value="teatro_sala">Teatro / Sala de Eventos</option>
+                            <option value="galeria_espacio_cultural">Galería / Espacio Cultural</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                        <input type="text" name="other_business_type" id="id_other_business_type" class="form-control mt-2" placeholder="Especifica otro tipo de negocio" style="display:none;">
+                    </div>
+
+                    <!-- Ciudad / Provincia -->
+                    <div class="form-group">
+                        <label for="id_city"><i class="fas fa-city"></i> Ciudad / Provincia</label>
+                        <input type="text" name="city" id="id_city" class="form-control" placeholder="Ej: Buenos Aires, CABA">
+                    </div>
+
+                    <!-- Barrio -->
+                    <div class="form-group">
+                        <label for="id_neighborhood"><i class="fas fa-map-marker-alt"></i> Barrio</label>
+                        <input type="text" name="neighborhood" id="id_neighborhood" class="form-control" placeholder="Ej: Palermo">
+                    </div>
+
+                    <!-- Dirección -->
+                    <div class="form-group">
+                        <label for="id_address"><i class="fas fa-map-marker-alt"></i> Dirección</label>
+                        <input type="text" name="address" id="id_address" class="form-control" placeholder="Ej: Av. Corrientes 1234, CABA">
+                    </div>
+
+                    <!-- Capacidad -->
+                    <div class="form-group">
+                        <label for="id_capacity"><i class="fas fa-users"></i> Capacidad (personas)</label>
+                        <input type="number" name="capacity" id="id_capacity" class="form-control" min="1" placeholder="Ej: 200">
+                    </div>
+
+                    <!-- Días y horarios -->
+                    <div class="form-group">
+                        <label><i class="fas fa-clock"></i> Días y Horarios de Funcionamiento</label>
+                        <small class="form-text text-muted">Seleccione los días y complete los horarios</small>
+                        {% for day in days %}
+                        <div class="availability-day mb-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="days_{{ day }}" id="day_{{ day }}">
+                                <label class="form-check-label" for="day_{{ day }}">{{ day }}</label>
+                            </div>
+                            <div class="time-range d-flex gap-2 mt-1">
+                                <input type="time" name="from_{{ day }}" class="form-control form-control-sm" placeholder="Desde">
+                                <input type="time" name="to_{{ day }}" class="form-control form-control-sm" placeholder="Hasta">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Redes sociales -->
+                    <div class="form-group">
+                        <label><i class="fas fa-share-alt"></i> Redes Sociales</label>
+                        <input type="text" name="instagram" class="form-control mb-1" placeholder="Instagram (opcional)">
+                        <input type="text" name="tiktok" class="form-control mb-1" placeholder="TikTok (opcional)">
+                        <input type="text" name="facebook" class="form-control" placeholder="Facebook (opcional)">
+                    </div>
+
+                    <!-- Contacto alternativo -->
+                    <div class="form-group">
+                        <label for="id_alternative_contact"><i class="fas fa-phone-alt"></i> Contacto Alternativo</label>
+                        <input type="text" name="alternative_contact" id="id_alternative_contact" class="form-control" placeholder="Ej: +54 9 11 1234-5678">
+                    </div>
+
+                    <!-- Servicios adicionales -->
+                    <div class="form-group">
+                        <label><i class="fas fa-music"></i> Servicios Adicionales</label>
+                        <div id="services-checkboxes">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="sonido" id="service_sonido">
+                                <label class="form-check-label" for="service_sonido">Sonido</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="escenario" id="service_escenario">
+                                <label class="form-check-label" for="service_escenario">Escenario</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="luces" id="service_luces">
+                                <label class="form-check-label" for="service_luces">Luces</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="DJ booth" id="service_dj">
+                                <label class="form-check-label" for="service_dj">DJ Booth</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="proyector" id="service_proyector">
+                                <label class="form-check-label" for="service_proyector">Proyector / Pantalla</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="catering" id="service_catering">
+                                <label class="form-check-label" for="service_catering">Catering / Comida</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="bebidas" id="service_bebidas">
+                                <label class="form-check-label" for="service_bebidas">Bebidas / Bar</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="estacionamiento" id="service_estacionamiento">
+                                <label class="form-check-label" for="service_estacionamiento">Estacionamiento</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="seguridad" id="service_seguridad">
+                                <label class="form-check-label" for="service_seguridad">Seguridad</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="wifi" id="service_wifi">
+                                <label class="form-check-label" for="service_wifi">Wi-Fi</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="services[]" value="decoracion" id="service_decoracion">
+                                <label class="form-check-label" for="service_decoracion">Decoración</label>
+                            </div>
+                        </div>
+
+                        <!-- Añadir servicio personalizado -->
+                        <div class="mt-2">
+                            <input type="text" id="custom_service_input" class="form-control mb-1" placeholder="Agregar otro servicio">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addCustomService()">Agregar</button>
+                        </div>
+                        <div id="custom_services_container" class="mt-1"></div>
+                    </div>
+
+                    <!-- Políticas de contratación -->
+                    <div class="form-group">
+                        <label for="id_hiring_policies"><i class="fas fa-file-contract"></i> Políticas de Contratación</label>
+                        <textarea name="hiring_policies" id="id_hiring_policies" class="form-control" rows="3" placeholder="Ej: cachet fijo, porcentaje de entradas, consumo mínimo."></textarea>
+                    </div>
+
+                    <!-- Botón -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn-complete">
+                            <i class="fas fa-check-circle"></i> Guardar Perfil
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleOtherBusinessType() {
+    var select = document.getElementById('id_business_type');
+    var otherInput = document.getElementById('id_other_business_type');
+    if (select.value === 'otro') {
+        otherInput.style.display = 'block';
+    } else {
+        otherInput.style.display = 'none';
+        otherInput.value = '';
+    }
+}
+
+function addCustomService() {
+    var input = document.getElementById('custom_service_input');
+    var container = document.getElementById('custom_services_container');
+    if (input.value.trim() !== '') {
+        var id = 'service_' + input.value.replace(/\s+/g, '_').toLowerCase();
+        var div = document.createElement('div');
+        div.classList.add('form-check');
+        div.innerHTML = '<input class="form-check-input" type="checkbox" name="services[]" value="' + input.value + '" id="' + id + '" checked>' +
+                        '<label class="form-check-label" for="' + id + '">' + input.value + '</label>';
+        container.appendChild(div);
+        input.value = '';
+    }
+}
+</script>
+{% endblock %}
+
+
+
+
+
+

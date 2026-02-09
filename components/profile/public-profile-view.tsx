@@ -567,20 +567,6 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                     <p className="text-gray-700 text-sm whitespace-pre-line">{data.contractPolicies}</p>
                   </Card>
                 )}
-
-                {data.phone && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                        <Phone className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Contacto</p>
-                        <p className="text-lg font-semibold text-gray-900">{data.phone}</p>
-                      </div>
-                    </div>
-                  </Card>
-                )}
               </>
             )}
 
@@ -632,7 +618,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                         <DollarSign className="w-6 h-6 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Rango de Precios</p>
+                        <p className="text-sm text-gray-500">Precio / Tarifa</p>
                         <p className="text-lg font-bold text-gray-900">{data.priceRange}</p>
                       </div>
                     </div>

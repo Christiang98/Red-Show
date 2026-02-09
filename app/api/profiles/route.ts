@@ -49,7 +49,10 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Guardando perfil para usuario:", userId, "rol:", role)
     console.log("[v0] isPublished:", specificProfileData?.isPublished)
 
-    // Intentar agregar columnas de redes sociales si no existen
+    // Intentar agregar columnas si no existen
+    try {
+      await runQuery("ALTER TABLE profiles ADD COLUMN phone TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
     try {
       await runQuery("ALTER TABLE profiles ADD COLUMN instagram TEXT DEFAULT ''", [])
     } catch { /* columna ya existe */ }
@@ -188,6 +191,11 @@ export async function POST(request: NextRequest) {
     } else if (role === "artist" && specificProfileData) {
       const existingArtist = await getQuery("SELECT id FROM artist_profiles WHERE user_id = ?", [userId])
 
+      // Intentar agregar columna featured_image si no existe
+      try {
+        await runQuery("ALTER TABLE artist_profiles ADD COLUMN featured_image TEXT DEFAULT NULL", [])
+      } catch { /* columna ya existe */ }
+
       if (existingArtist) {
         await runQuery(
           `UPDATE artist_profiles SET 
@@ -195,7 +203,8 @@ export async function POST(request: NextRequest) {
             portfolio_url = ?, description = ?, profile_image = ?,
             portfolio_images = ?, is_published = ?, stage_name = ?, 
             other_category = ?, service_type = ?, price_range = ?, 
-            bio = ?, experience_years = ?, neighborhood = ?, availability = ?
+            bio = ?, experience_years = ?, neighborhood = ?, availability = ?,
+            featured_image = ?
           WHERE user_id = ?`,
           [
             specificProfileData.artistName || specificProfileData.stageName,
@@ -214,6 +223,7 @@ export async function POST(request: NextRequest) {
             specificProfileData.experienceYears || 0,
             specificProfileData.neighborhood || "",
             specificProfileData.availability || "[]",
+            specificProfileData.featuredImage || null,
             userId,
           ],
         )
@@ -223,8 +233,8 @@ export async function POST(request: NextRequest) {
           (user_id, artist_name, category, years_of_experience, portfolio_url, 
            description, profile_image, portfolio_images, is_published, stage_name,
            other_category, service_type, price_range, bio, experience_years, 
-           neighborhood, availability) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           neighborhood, availability, featured_image) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             userId,
             specificProfileData.artistName || specificProfileData.stageName,
@@ -243,6 +253,7 @@ export async function POST(request: NextRequest) {
             specificProfileData.experienceYears || 0,
             specificProfileData.neighborhood || "",
             specificProfileData.availability || "[]",
+            specificProfileData.featuredImage || null,
           ],
         )
       }

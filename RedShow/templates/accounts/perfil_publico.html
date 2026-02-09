@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Perfil de {{ perfil_user.username }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/perfil-publico.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="perfil-publico-container">
+
+    <!-- Card principal -->
+    <div class="profile-card">
+
+        <!-- Header: Foto de perfil y nombre de usuario -->
+        <div class="profile-header">
+            <img src="{{ perfil_user.profile_picture.url }}" alt="Foto de perfil" class="profile-picture">
+            <div class="user-info">
+                <h2>{{ perfil_user.username }}</h2>
+                {% if profile %}
+                <p><strong>Negocio:</strong> {{ profile.business_name }}</p>
+                <p><strong>Tipo:</strong> {{ profile.business_type }}</p>
+                <p><strong>Dirección:</strong> {{ profile.address }}</p>
+                <p><strong>Capacidad:</strong> {{ profile.capacity }}</p>
+                <p><strong>Horario:</strong> {{ profile.opening_hours }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Descripción -->
+        {% if profile.description %}
+        <div class="description">
+            <h3>Descripción</h3>
+            <p>{{ profile.description }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Galería de fotos/videos -->
+        {% if media %}
+        <div class="gallery">
+            <h3>Galería</h3>
+            <div class="gallery-grid">
+                {% for m in media %}
+                    {% if m.media_type == 'image' %}
+                        <img src="{{ m.file.url }}" alt="Imagen del negocio" class="gallery-item">
+                    {% elif m.media_type == 'video' %}
+                        <video controls class="gallery-item">
+                            <source src="{{ m.file.url }}">
+                            Tu navegador no soporta videos.
+                        </video>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div> <!-- profile-card -->
+</div>
+{% endblock %}

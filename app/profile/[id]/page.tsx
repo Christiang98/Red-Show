@@ -55,7 +55,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           
           setProfileData({
             businessName: data.specificProfile.business_name,
-            businessType: getBusinessTypeLabel(data.specificProfile.business_type),
+            businessType: getBusinessTypeLabel(data.specificProfile.business_type, data.specificProfile.other_business_type),
             city: city,
             neighborhood: cleanNeighborhood,
             address: data.specificProfile.address,
@@ -102,27 +102,19 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             console.error("[v0] Error parsing availability:", e)
           }
 
-          // Formatear rango de precio
-          const priceRangeLabels: Record<string, string> = {
-            budget: "Economico ($ - $$)",
-            moderate: "Moderado ($$ - $$$)",
-            premium: "Premium ($$$ - $$$$)",
-            luxury: "Lujo ($$$$+)",
-          }
-
           // Extraer ciudad y barrio correctamente para artistas
           const artistCity = data.profile?.location || ""
           const artistNeighborhood = data.specificProfile.neighborhood || ""
 
           setProfileData({
             artistName: data.specificProfile.stage_name || data.specificProfile.artist_name,
-            category: getCategoryLabel(data.specificProfile.category),
+            category: getCategoryLabel(data.specificProfile.category, data.specificProfile.other_category),
             city: artistCity,
             neighborhood: artistNeighborhood !== artistCity ? artistNeighborhood : "",
             yearsOfExperience: data.specificProfile.experience_years || data.specificProfile.years_of_experience,
             description: data.specificProfile.bio || data.specificProfile.description,
             serviceType: data.specificProfile.service_type,
-            priceRange: priceRangeLabels[data.specificProfile.price_range] || data.specificProfile.price_range,
+            priceRange: data.specificProfile.price_range || "",
             availability: availabilityFormatted,
             instagram: data.profile?.instagram,
             tiktok: data.profile?.tiktok,
@@ -131,6 +123,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             phone: data.profile?.phone,
             portfolioUrl: data.specificProfile.portfolio_url,
             profileImage: data.specificProfile.profile_image,
+            featuredImage: data.specificProfile.featured_image || null,
             portfolioImages: portfolioImages,
             reviews: [],
           })
@@ -144,7 +137,10 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   }
 
   // Funcion para obtener label del tipo de negocio
-  const getBusinessTypeLabel = (type: string) => {
+  const getBusinessTypeLabel = (type: string, otherType?: string) => {
+    if (type === "other" && otherType) {
+      return otherType
+    }
     const types: Record<string, string> = {
       salon: "Salon de Eventos",
       bar: "Bar",
@@ -159,7 +155,10 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   }
 
   // Funcion para obtener label de categoria de artista
-  const getCategoryLabel = (category: string) => {
+  const getCategoryLabel = (category: string, otherCategory?: string) => {
+    if (category === "other" && otherCategory) {
+      return otherCategory
+    }
     const categories: Record<string, string> = {
       musician: "Musico",
       band: "Banda",
