@@ -16,7 +16,6 @@ import { getCurrentUser } from "@/lib/auth"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { 
-  AlertCircle, 
   ArrowLeft, 
   MapPin, 
   Clock, 
@@ -38,7 +37,6 @@ import {
   ImageIcon,
   CheckCircle2,
   Flag,
-  Phone,
   FileText,
   Facebook
 } from "lucide-react"
@@ -51,21 +49,51 @@ interface PublicProfileProps {
   userId: string
 }
 
-// Componente de estrellas
-function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) {
+function StarRating({ rating, size = "sm", interactive = false, onRate }: { 
+  rating: number; size?: "sm" | "lg"; interactive?: boolean; onRate?: (r: number) => void 
+}) {
+  const [hover, setHover] = useState(0)
   const starSize = size === "lg" ? "w-5 h-5" : "w-4 h-4"
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
-          className={`${starSize} ${
-            star <= Math.round(rating)
+          onClick={() => interactive && onRate && onRate(star)}
+          onMouseEnter={() => interactive && setHover(star)}
+          onMouseLeave={() => interactive && setHover(0)}
+          className={`${starSize} transition-all ${interactive ? "cursor-pointer hover:scale-125" : ""} ${
+            star <= Math.round(hover || rating)
               ? "fill-yellow-400 text-yellow-400"
-              : "fill-gray-200 text-gray-200"
+              : "fill-gray-600 text-gray-600"
           }`}
         />
       ))}
+    </div>
+  )
+}
+
+function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-2xl border border-white/10 shadow-xl ${className}`}
+      style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)", backdropFilter: "blur(12px)" }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function InfoPill({ icon, label, value, accent = false }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-xl ${accent ? "bg-purple-500/10 border border-purple-500/20" : "bg-white/5 border border-white/10"}`}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${accent ? "bg-purple-500/20" : "bg-white/10"}`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-white/40 uppercase tracking-wider font-medium">{label}</p>
+        <p className="text-sm font-semibold text-white truncate">{value}</p>
+      </div>
     </div>
   )
 }
@@ -82,7 +110,6 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
   const [proposedDate, setProposedDate] = useState("")
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [reviewRating, setReviewRating] = useState(0)
-  const [reviewHoverRating, setReviewHoverRating] = useState(0)
   const [reviewComment, setReviewComment] = useState("")
   const [reviewLoading, setReviewLoading] = useState(false)
   const [localReviews, setLocalReviews] = useState<any[]>([])
@@ -91,22 +118,12 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
 
   const isOwner = type === "owner"
 
-  
-
   useEffect(() => {
     const user = getCurrentUser()
     setCurrentUser(user)
     const isOwn = user && user.id === userId
     setIsOwnProfile(isOwn)
     setLocalReviews(data.reviews || [])
-    
-    console.log('[DEBUG] Perfil público:', { 
-      currentUserId: user?.id, 
-      profileUserId: userId, 
-      isOwnProfile: isOwn,
-      shouldShowReportButton: !isOwn
-    })
-    
     if (user && user.id !== userId) {
       checkExistingBooking(user.id)
     }
@@ -116,29 +133,21 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
     try {
       const response = await fetch(`/api/bookings?userId=${currentUserId}`)
       const bookings = await response.json()
-      
       const existingBooking = bookings.find((b: any) => {
         const isRequester = b.artist_id === currentUserId || b.owner_id === currentUserId
         const isReceiver = b.artist_id === parseInt(userId) || b.owner_id === parseInt(userId)
         return isRequester && isReceiver
       })
-      
       if (existingBooking) {
         setHiringStatus(existingBooking.status === "accepted" ? "accepted" : "pending")
         setExistingBookingId(existingBooking.id.toString())
       }
-    } catch {
-      // Error silencioso al verificar booking existente
-    }
+    } catch { /* silent */ }
   }
 
   const openHiringModal = () => {
     if (!currentUser) {
-      toast({
-        title: "Inicia sesion",
-        description: "Debes iniciar sesion para enviar una solicitud",
-        variant: "destructive",
-      })
+      toast({ title: "Inicia sesion", description: "Debes iniciar sesion para enviar una solicitud", variant: "destructive" })
       return
     }
     setShowHiringModal(true)
@@ -146,13 +155,10 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
 
   const handleSendHiringRequest = async () => {
     if (!currentUser) return
-
     setHiringStatus("loading")
     setShowHiringModal(false)
-    
     try {
       const isCurrentUserArtist = currentUser.role === "artist"
-      
       const response = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -169,28 +175,19 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
           message: hiringMessage,
         }),
       })
-
       const result = await response.json()
-
       if (response.ok) {
         setHiringStatus("pending")
         setExistingBookingId(result.id.toString())
         setHiringMessage("")
         setProposedDate("")
-        toast({
-          title: "Solicitud enviada",
-          description: "Tu solicitud de contratacion ha sido enviada exitosamente.",
-        })
+        toast({ title: "Solicitud enviada", description: "Tu solicitud de contratacion ha sido enviada exitosamente." })
       } else {
         throw new Error(result.error)
       }
     } catch {
       setHiringStatus("idle")
-      toast({
-        title: "Error",
-        description: "No se pudo enviar la solicitud. Intenta nuevamente.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "No se pudo enviar la solicitud. Intenta nuevamente.", variant: "destructive" })
     }
   }
 
@@ -201,21 +198,11 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
       const response = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reviewerId: currentUser.id,
-          reviewedUserId: userId,
-          rating: reviewRating,
-          comment: reviewComment,
-        }),
+        body: JSON.stringify({ reviewerId: currentUser.id, reviewedUserId: userId, rating: reviewRating, comment: reviewComment }),
       })
       const result = await response.json()
       if (response.ok) {
-        const newReview = {
-          author: `${currentUser.firstName} ${currentUser.lastName}`,
-          rating: reviewRating,
-          comment: reviewComment,
-          date: "Ahora",
-        }
+        const newReview = { author: `${currentUser.firstName} ${currentUser.lastName}`, rating: reviewRating, comment: reviewComment, date: "Ahora" }
         setLocalReviews((prev) => [newReview, ...prev])
         setShowReviewForm(false)
         setReviewRating(0)
@@ -231,43 +218,25 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
     }
   }
 
-  const handleGoToChat = () => {
-    router.push(`/messaging?userId=${userId}`)
-  }
-
-  const handleReportUser = () => {
-    router.push(`/report/${userId}`)
-  }
+  const handleGoToChat = () => router.push(`/messaging?userId=${userId}`)
+  const handleReportUser = () => router.push(`/report/${userId}`)
 
   const bioText = data.description || data.biography || ""
   const shouldTruncateBio = bioText.length > 400
-  
-  // Parsear servicios adicionales
-  const servicesList = data.additionalServices 
-    ? data.additionalServices
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter((s: string) => Boolean(s) && s !== "__other__")
-    : []
-  // Agregar servicio personalizado si existe
-  if (data.otherService && data.otherService.trim()) {
-    servicesList.push(data.otherService.trim())
-  }
 
-  // Calcular rating promedio con localReviews
-  const avgRating = localReviews?.length > 0 
-    ? localReviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / localReviews.length 
+  const servicesList = data.additionalServices
+    ? data.additionalServices.split(",").map((s: string) => s.trim()).filter((s: string) => Boolean(s) && s !== "__other__")
+    : []
+  if (data.otherService && data.otherService.trim()) servicesList.push(data.otherService.trim())
+
+  const avgRating = localReviews?.length > 0
+    ? localReviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / localReviews.length
     : 0
 
-  // Obtener ubicacion completa sin duplicados
   const neighborhood = data.neighborhood?.trim() || ""
   const city = data.city?.trim() || ""
-  
-  // Normalizar para comparacion (minusculas, sin espacios extra)
-  const normalizedNeighborhood = neighborhood.toLowerCase().replace(/\s+/g, ' ')
-  const normalizedCity = city.toLowerCase().replace(/\s+/g, ' ')
-  
-  // Construir ubicacion evitando duplicados
+  const normalizedNeighborhood = neighborhood.toLowerCase().replace(/\s+/g, " ")
+  const normalizedCity = city.toLowerCase().replace(/\s+/g, " ")
   let fullLocation = ""
   if (neighborhood && city && normalizedNeighborhood !== normalizedCity) {
     fullLocation = `${neighborhood}, ${city}`
@@ -277,15 +246,80 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
     fullLocation = neighborhood
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {isOwnProfile && <AppNavbar />}
+  const profileName = data.businessName || data.artistName || "Perfil"
+  const categoryLabel = isOwner
+    ? (data.businessTypeLabel || data.businessType || "Espacio")
+    : (data.categoryLabel || data.category || "Artista")
 
-      {/* Header de navegacion para visitantes */}
+  const renderActionButtons = () => {
+    if (isOwnProfile) {
+      return (
+        <Button asChild className="w-full h-12 font-bold text-base border-0 shadow-lg"
+          style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
+          <Link href={isOwner ? "/profile/owner" : "/profile/artist"}>Editar Perfil</Link>
+        </Button>
+      )
+    }
+    return (
+      <div className="flex flex-col gap-3 w-full">
+        {hiringStatus === "idle" && (
+          <Button onClick={openHiringModal} className="w-full h-12 font-bold text-base border-0 shadow-lg shadow-purple-900/30"
+            style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
+            <Send className="h-4 w-4 mr-2" />
+            Solicitar Contratación
+          </Button>
+        )}
+        {hiringStatus === "loading" && (
+          <Button disabled className="w-full h-12 font-bold bg-white/10 border border-white/20 text-white/50">
+            Enviando solicitud...
+          </Button>
+        )}
+        {hiringStatus === "pending" && (
+          <Button disabled className="w-full h-12 font-bold bg-green-500/20 border border-green-500/30 text-green-400">
+            <Check className="h-4 w-4 mr-2" />
+            Solicitud Enviada
+          </Button>
+        )}
+        {hiringStatus === "accepted" && (
+          <Button onClick={handleGoToChat} className="w-full h-12 font-bold border-0 shadow-lg shadow-green-900/30"
+            style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}>
+            <Send className="h-4 w-4 mr-2" />
+            Enviar Mensaje
+          </Button>
+        )}
+        <div className="border-t border-white/10 my-1" />
+        <Button onClick={handleReportUser} variant="outline"
+          className="w-full h-10 font-semibold border border-red-500/40 bg-red-500/5 text-red-400 hover:bg-red-500/15 hover:border-red-500/60 hover:text-red-300 transition-all">
+          <Flag className="h-4 w-4 mr-2" />
+          Reportar Usuario
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #080b14 0%, #0d0817 50%, #080b14 100%)" }}>
+
+      {/* Ambient blobs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-60 -left-60 w-[700px] h-[700px] rounded-full opacity-25"
+          style={{ background: "radial-gradient(circle, rgba(0,28,85,0.8) 0%, transparent 70%)" }} />
+        <div className="absolute top-1/4 -right-60 w-[600px] h-[600px] rounded-full opacity-15"
+          style={{ background: "radial-gradient(circle, rgba(183,68,184,0.7) 0%, transparent 70%)" }} />
+        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(183,68,184,0.6) 0%, transparent 70%)" }} />
+      </div>
+
+      {/* Navbar for own profile */}
+      {isOwnProfile && <div className="relative z-50"><AppNavbar /></div>}
+
+      {/* Visitor header */}
       {!isOwnProfile && (
-        <header className="bg-white border-b sticky top-0 z-40">
+        <header className="relative z-40 border-b border-white/8"
+          style={{ background: "rgba(8,11,20,0.85)", backdropFilter: "blur(20px)" }}>
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <Button variant="ghost" onClick={() => router.back()} className="text-gray-600 hover:text-gray-900">
+            <Button variant="ghost" onClick={() => router.back()}
+              className="text-white/50 hover:text-white hover:bg-white/8 transition-all">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver
             </Button>
@@ -294,687 +328,460 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
         </header>
       )}
 
-      {/* Hero con imagen de portada */}
-      <div className="relative">
-        <div className="h-64 md:h-80 overflow-hidden">
+      {/* ══════ HERO ══════ */}
+      <div className="relative z-10">
+        <div className="h-72 md:h-96 relative overflow-hidden">
           <img
             src={data.featuredImage || data.profileImage || "/placeholder.svg?height=400&width=1200"}
             alt="Portada"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, rgba(8,11,20,1) 0%, rgba(8,11,20,0.55) 55%, rgba(8,11,20,0.1) 100%)" }} />
+          <div className="absolute inset-0"
+            style={{ background: "linear-gradient(100deg, rgba(0,28,85,0.25) 0%, transparent 55%)" }} />
         </div>
-        
-        {/* Info superpuesta en el hero */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <div className="max-w-6xl mx-auto px-4 pb-6">
-            <div className="flex flex-col md:flex-row items-end gap-4 md:gap-6">
-              {/* Foto de perfil */}
-              <div className="relative -mb-16 md:-mb-12">
-                <div className="w-28 h-28 md:w-36 md:h-36 rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-white">
-                  <img
-                    src={data.profileImage || "/placeholder.svg?height=160&width=160"}
-                    alt={data.businessName || data.artistName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-24 md:-mt-20 pb-8 relative">
+            
+            {/* Avatar */}
+            <div className="relative flex-shrink-0 mt-4 md:mt-0">
+              <div className="absolute inset-0 rounded-2xl blur-xl opacity-50"
+                style={{ background: "linear-gradient(135deg, #001C55, #B744B8)", transform: "scale(1.15)" }} />
+              <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl">
+                <img src={data.profileImage || "/placeholder.svg?height=160&width=160"} alt={profileName} className="w-full h-full object-cover" />
               </div>
-              
-              {/* Info basica */}
-              <div className="flex-1 pb-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className={`${isOwner ? 'bg-primary' : 'bg-secondary'} text-white`}>
-                    {isOwner ? <Building2 className="w-3 h-3 mr-1" /> : <Music className="w-3 h-3 mr-1" />}
-                    {isOwner 
-                      ? (data.businessType === "other" ? (data.otherBusinessType || "Otro") : (data.businessType || "Espacio")) 
-                      : (data.category === "other" ? (data.otherCategory || "Otro") : (data.category || "Artista"))}
-                  </Badge>
-                  {avgRating > 0 && (
-                    <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full">
-                      <StarRating rating={avgRating} />
-                      <span className="font-bold text-gray-900 text-sm">{avgRating.toFixed(1)}</span>
-                    </div>
-                  )}
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
-                  {data.businessName || data.artistName}
-                </h1>
-                {fullLocation && (
-                  <p className="flex items-center gap-1.5 text-white/90 mt-1">
-                    <MapPin className="w-4 h-4" />
-                    {fullLocation}
-                  </p>
+            </div>
+
+            {/* Name & meta */}
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white ${isOwner ? "bg-blue-700/70" : "bg-purple-700/70"}`}
+                  style={{ backdropFilter: "blur(8px)", border: `1px solid ${isOwner ? "rgba(59,130,246,0.3)" : "rgba(168,85,247,0.3)"}` }}>
+                  {isOwner ? <Building2 className="w-3 h-3" /> : <Music className="w-3 h-3" />}
+                  {categoryLabel}
+                </span>
+                {avgRating > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-yellow-300 bg-yellow-400/10 border border-yellow-400/20">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    {avgRating.toFixed(1)} · {localReviews.length} reseña{localReviews.length !== 1 ? "s" : ""}
+                  </span>
                 )}
               </div>
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight mb-2">
+                {profileName}
+              </h1>
+              {fullLocation && (
+                <p className="flex items-center gap-1.5 text-white/45 text-sm">
+                  <MapPin className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                  {fullLocation}
+                </p>
+              )}
+            </div>
+
+            {/* Desktop inline CTA */}
+            <div className="hidden lg:block w-64 flex-shrink-0">
+              <GlassCard className="p-4">
+                {renderActionButtons()}
+              </GlassCard>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Contenido principal */}
-      <div className="max-w-6xl mx-auto px-4 pt-20 md:pt-16 pb-12">
+      {/* ══════ MAIN CONTENT ══════ */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 pb-16">
+
+        {/* Mobile actions */}
+        <div className="lg:hidden mb-6">
+          <GlassCard className="p-4">
+            {renderActionButtons()}
+          </GlassCard>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-6">
           
-          {/* Columna principal (2/3) */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Botones de accion (mobile) */}
-            <div className="lg:hidden flex gap-3 mt-6 mb-8">
-              {isOwnProfile ? (
-                <Button asChild className="flex-1 bg-primary hover:bg-primary/90">
-                  <Link href={isOwner ? "/profile/owner" : "/profile/artist"}>Editar Perfil</Link>
-                </Button>
-              ) : (
-                <>
-                  {hiringStatus === "idle" && (
-                    <Button onClick={openHiringModal} className="flex-1 bg-secondary hover:bg-secondary/90 font-semibold">
-                      <Send className="h-4 w-4 mr-2" />
-                      Solicitar Contratacion
-                    </Button>
-                  )}
-                  {hiringStatus === "loading" && (
-                    <Button disabled className="flex-1">Enviando...</Button>
-                  )}
-                  {hiringStatus === "pending" && (
-                    <Button disabled className="flex-1 bg-gray-200 text-gray-600">
-                      <Check className="h-4 w-4 mr-2" />
-                      Solicitud Enviada
-                    </Button>
-                  )}
-                  {hiringStatus === "accepted" && (
-                    <Button onClick={handleGoToChat} className="flex-1 bg-green-600 hover:bg-green-700">
-                      <Send className="h-4 w-4 mr-2" />
-                      Enviar Mensaje
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
+          {/* ─── LEFT COLUMN ─── */}
+          <div className="lg:col-span-2 space-y-5">
 
-            {/* Seccion: Acerca de / Biografia */}
-            <Card className="p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                {isOwner ? "Acerca del Espacio" : "Biografia"}
+            {/* About */}
+            <GlassCard className="p-6">
+              <h2 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span className="w-1 h-4 rounded-full inline-block" style={{ background: "linear-gradient(to bottom, #B744B8, #001C55)" }} />
+                {isOwner ? "Acerca del Espacio" : "Biografía"}
               </h2>
               {bioText ? (
                 <div>
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                  <p className="text-white/65 leading-relaxed whitespace-pre-line text-sm">
                     {showFullBio || !shouldTruncateBio ? bioText : `${bioText.substring(0, 400)}...`}
                   </p>
                   {shouldTruncateBio && (
-                    <button
-                      onClick={() => setShowFullBio(!showFullBio)}
-                      className="mt-3 text-primary hover:text-primary/80 font-medium flex items-center gap-1"
-                    >
-                      {showFullBio ? <><ChevronUp className="h-4 w-4" /> Ver menos</> : <><ChevronDown className="h-4 w-4" /> Leer mas</>}
+                    <button onClick={() => setShowFullBio(!showFullBio)}
+                      className="mt-3 text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 text-sm transition-colors">
+                      {showFullBio ? <><ChevronUp className="h-4 w-4" /> Ver menos</> : <><ChevronDown className="h-4 w-4" /> Leer más</>}
                     </button>
                   )}
                 </div>
               ) : (
-                <p className="text-gray-500 italic">Sin descripcion disponible</p>
+                <p className="text-white/25 italic text-sm">Sin descripción disponible</p>
               )}
-            </Card>
+            </GlassCard>
 
-            {/* Galeria / Portfolio */}
+            {/* Gallery / Portfolio */}
             {((isOwner && data.galleryImages?.length > 0) || (!isOwner && data.portfolioImages?.length > 0)) && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5 text-primary" />
-                    {isOwner ? "Galeria del Espacio" : "Portfolio Multimedia"}
+              <GlassCard className="p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1 h-4 rounded-full inline-block" style={{ background: "linear-gradient(to bottom, #B744B8, #001C55)" }} />
+                    {isOwner ? "Galería" : "Portfolio"}
                   </h2>
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setActiveTab("fotos")}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                        activeTab === "fotos" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"
-                      }`}
-                    >
-                      <ImageIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("videos")}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                        activeTab === "videos" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"
-                      }`}
-                    >
-                      <Play className="w-4 h-4" />
-                    </button>
+                  <div className="flex bg-white/5 border border-white/10 rounded-lg p-1 gap-1">
+                    {["fotos", "videos"].map((tab) => (
+                      <button key={tab} onClick={() => setActiveTab(tab as any)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                          activeTab === tab
+                            ? "text-white shadow-lg"
+                            : "text-white/35 hover:text-white/60"
+                        }`}
+                        style={activeTab === tab ? { background: "linear-gradient(135deg, #001C55, #B744B8)" } : {}}>
+                        {tab === "fotos" ? <ImageIcon className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                
-                {activeTab === "fotos" && (
+                {activeTab === "fotos" ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {(isOwner ? data.galleryImages : data.portfolioImages)?.map((img: string, idx: number) => (
-                      <div key={idx} className="aspect-square rounded-xl overflow-hidden group cursor-pointer">
-                        <img
-                          src={img || "/placeholder.svg"}
-                          alt={`Imagen ${idx + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                        />
+                      <div key={idx} className="aspect-square rounded-xl overflow-hidden group cursor-pointer relative border border-white/10">
+                        <img src={img || "/placeholder.svg"} alt={`Imagen ${idx + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }} />
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="flex items-center justify-center py-12 text-white/25 text-sm">No hay videos disponibles</div>
                 )}
-                
-                {activeTab === "videos" && (
-                  <div className="flex items-center justify-center py-12 text-gray-500">
-                    <p>No hay videos disponibles</p>
-                  </div>
-                )}
-              </Card>
+              </GlassCard>
             )}
 
-            {/* Reseñas */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Star className="w-5 h-5 text-primary" />
+            {/* Reviews */}
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-1 h-4 rounded-full inline-block" style={{ background: "linear-gradient(to bottom, #B744B8, #001C55)" }} />
                   Reseñas
                 </h2>
                 {avgRating > 0 && (
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-gray-900">{avgRating.toFixed(1)}</p>
-                      <p className="text-xs text-gray-500">{localReviews.length} reseña{localReviews.length !== 1 ? "s" : ""}</p>
+                      <p className="text-2xl font-black text-white">{avgRating.toFixed(1)}</p>
+                      <p className="text-xs text-white/35">{localReviews.length} reseña{localReviews.length !== 1 ? "s" : ""}</p>
                     </div>
                     <StarRating rating={avgRating} size="lg" />
                   </div>
                 )}
               </div>
 
-              {/* Botón para dejar reseña (solo si no es perfil propio y está logueado) */}
               {!isOwnProfile && currentUser && !showReviewForm && (
-                <button
-                  onClick={() => setShowReviewForm(true)}
-                  className="w-full mb-5 p-3 border-2 border-dashed border-secondary/40 rounded-xl text-secondary hover:border-secondary hover:bg-secondary/5 transition text-sm font-medium flex items-center justify-center gap-2"
-                >
+                <button onClick={() => setShowReviewForm(true)}
+                  className="w-full mb-5 p-3 rounded-xl border-2 border-dashed border-purple-500/25 text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all text-sm font-semibold flex items-center justify-center gap-2">
                   <Star className="h-4 w-4" />
                   Dejar una reseña
                 </button>
               )}
 
-              {/* Formulario de reseña */}
               {showReviewForm && !isOwnProfile && (
-                <div className="mb-5 p-4 bg-secondary/5 border border-secondary/20 rounded-xl space-y-4">
-                  <h3 className="font-semibold text-foreground text-sm">Tu reseña</h3>
-                  
-                  {/* Estrellas interactivas */}
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setReviewRating(star)}
-                        onMouseEnter={() => setReviewHoverRating(star)}
-                        onMouseLeave={() => setReviewHoverRating(0)}
-                        className="transition-transform hover:scale-110"
-                      >
-                        <Star
-                          className={`w-8 h-8 transition-colors ${
-                            star <= (reviewHoverRating || reviewRating)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "fill-gray-200 text-gray-200"
-                          }`}
-                        />
-                      </button>
-                    ))}
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {reviewRating === 0 ? "Selecciona una calificación" : 
-                       reviewRating === 1 ? "Malo" : reviewRating === 2 ? "Regular" : 
-                       reviewRating === 3 ? "Bueno" : reviewRating === 4 ? "Muy bueno" : "Excelente"}
+                <div className="mb-5 p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 space-y-4">
+                  <h3 className="font-bold text-white text-sm">Tu reseña</h3>
+                  <div className="flex items-center gap-2">
+                    <StarRating rating={reviewRating} size="lg" interactive onRate={setReviewRating} />
+                    <span className="ml-1 text-xs text-white/40">
+                      {reviewRating === 0 ? "Selecciona" : reviewRating === 1 ? "Malo" : reviewRating === 2 ? "Regular" : reviewRating === 3 ? "Bueno" : reviewRating === 4 ? "Muy bueno" : "Excelente"}
                     </span>
                   </div>
-
-                  <textarea
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Contá tu experiencia con este usuario..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary bg-background text-foreground resize-none text-sm"
-                  />
-                  
+                  <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Contá tu experiencia..." rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-white placeholder-white/25 focus:outline-none focus:ring-2 resize-none text-sm"
+                    style={{ outline: "none" }} />
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setShowReviewForm(false); setReviewRating(0); setReviewComment("") }}
-                      className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmitReview}
+                    <button onClick={() => { setShowReviewForm(false); setReviewRating(0); setReviewComment("") }}
+                      className="px-4 py-2 rounded-lg border border-white/15 text-white/50 hover:text-white hover:bg-white/5 text-sm transition-all">Cancelar</button>
+                    <button onClick={handleSubmitReview}
                       disabled={reviewRating === 0 || !reviewComment.trim() || reviewLoading}
-                      className="flex-1 px-4 py-2 rounded-lg bg-secondary text-white text-sm font-semibold hover:bg-secondary/90 disabled:opacity-50 transition"
-                    >
+                      className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-30 transition-all"
+                      style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
                       {reviewLoading ? "Publicando..." : "Publicar reseña"}
                     </button>
                   </div>
                 </div>
               )}
-              
+
               {localReviews && localReviews.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {localReviews.map((review: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 rounded-xl p-4">
+                    <div key={idx} className="p-4 rounded-xl border border-white/8 bg-white/3">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-3">
                           {review.authorAvatar ? (
-                            <img src={review.authorAvatar} alt={review.author} className="w-10 h-10 rounded-full object-cover" />
+                            <img src={review.authorAvatar} alt={review.author} className="w-9 h-9 rounded-full object-cover border border-white/15" />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                              style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
                               {review.author?.charAt(0)?.toUpperCase() || "U"}
                             </div>
                           )}
                           <div>
-                            <p className="font-semibold text-gray-900">{review.author}</p>
-                            <p className="text-xs text-gray-500">{review.date || "Hace tiempo"}</p>
+                            <p className="font-semibold text-white text-sm">{review.author}</p>
+                            <p className="text-xs text-white/30">{review.date || "Hace tiempo"}</p>
                           </div>
                         </div>
                         <StarRating rating={review.rating || 0} />
                       </div>
-                      <p className="text-gray-700 text-sm">{review.comment}</p>
+                      <p className="text-white/55 text-sm leading-relaxed">{review.comment}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Star className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-500">Aún no hay reseñas</p>
+                <div className="text-center py-10">
+                  <Star className="w-10 h-10 text-white/12 mx-auto mb-3" />
+                  <p className="text-white/35 text-sm">Aún no hay reseñas</p>
                   {!isOwnProfile && currentUser && (
-                    <p className="text-sm text-muted-foreground mt-1">¡Sé el primero en dejar una reseña!</p>
+                    <p className="text-xs text-white/20 mt-1">¡Sé el primero en dejar una reseña!</p>
                   )}
                 </div>
               )}
-            </Card>
+            </GlassCard>
           </div>
 
-          {/* Sidebar (1/3) */}
+          {/* ─── RIGHT SIDEBAR ─── */}
           <div className="space-y-4">
-            
-            {/* Card de acciones (desktop) */}
-            <Card className="p-5 hidden lg:block sticky top-20">
-              <div className="space-y-4">
-                {isOwnProfile ? (
-                  <Button asChild className="w-full bg-primary hover:bg-primary/90 h-12 font-semibold text-base shadow-lg">
-                    <Link href={isOwner ? "/profile/owner" : "/profile/artist"}>Editar Perfil</Link>
-                  </Button>
-                ) : (
-                  <>
-                    {hiringStatus === "idle" && (
-                      <Button onClick={openHiringModal} className="w-full bg-secondary hover:bg-secondary/90 h-12 font-semibold text-base shadow-lg mb-2">
-                        <Send className="h-5 w-5 mr-2" />
-                        Solicitar Contratacion
-                      </Button>
-                    )}
-                    {hiringStatus === "loading" && (
-                      <Button disabled className="w-full h-12 mb-2">Enviando solicitud...</Button>
-                    )}
-                    {hiringStatus === "pending" && (
-                      <Button disabled className="w-full h-12 bg-gray-200 text-gray-600 mb-2">
-                        <Check className="h-5 w-5 mr-2" />
-                        Solicitud Enviada
-                      </Button>
-                    )}
-                    {hiringStatus === "accepted" && (
-                      <Button onClick={handleGoToChat} className="w-full h-12 bg-green-600 hover:bg-green-700 shadow-lg mb-2">
-                        <Send className="h-5 w-5 mr-2" />
-                        Enviar Mensaje
-                      </Button>
-                    )}
-                  </>
-                )}
-                
-                {/* Separador visual */}
-                {!isOwnProfile && <div className="border-t-2 border-gray-200 dark:border-gray-700 my-6" />}
-                
-                {/* Botón de reportar - MEJORADO Y MÁS VISIBLE */}
-                {!isOwnProfile && (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleReportUser}
-                      variant="outline"
-                      size="default"
-                      className="w-full border-2 border-red-300 text-red-700 hover:text-white hover:bg-red-600 hover:border-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-700 dark:hover:border-red-700 font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      <Flag className="h-4 w-4 mr-2" />
-                      Reportar Usuario
-                    </Button>
-                    <p className="text-xs text-center text-muted-foreground px-2">
-                      Reporta conductas inapropiadas o violaciones de términos
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Card>
 
-            {/* Info especifica para LOCALES */}
+            {/* Desktop sticky CTA - hidden when already shown inline in hero */}
+            <div className="hidden lg:block sticky top-6">
+              {/* intentionally empty - CTA is in hero for desktop */}
+            </div>
+
+            {/* Owner info */}
             {isOwner && (
               <>
-                {data.capacity && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Users className="w-6 h-6 text-primary" />
+                {(data.capacity || data.businessHours || data.address) && (
+                  <GlassCard className="p-5 space-y-3">
+                    <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest pb-1">Detalles del espacio</h3>
+                    {data.capacity && (
+                      <InfoPill icon={<Users className="w-4 h-4 text-blue-400" />} label="Capacidad" value={`${data.capacity} personas`} accent />
+                    )}
+                    {data.address && (
+                      <InfoPill icon={<MapPin className="w-4 h-4 text-purple-400" />} label="Dirección" value={data.address} />
+                    )}
+                    {data.businessHours && (
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-3.5 h-3.5 text-purple-400" />
+                          <p className="text-xs text-white/35 uppercase tracking-wider font-medium">Horarios</p>
+                        </div>
+                        <div className="space-y-1">
+                          {data.businessHours.split(" | ").map((hour: string, idx: number) => (
+                            <p key={idx} className="text-sm text-white/60">{hour}</p>
+                          ))}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Capacidad</p>
-                        <p className="text-xl font-bold text-gray-900">{data.capacity} personas</p>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-
-                {data.businessHours && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Clock className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-gray-900">Horarios</h3>
-                    </div>
-                    <div className="space-y-1.5">
-                      {data.businessHours.split(" | ").map((hour: string, idx: number) => (
-                        <p key={idx} className="text-gray-700 text-sm">{hour}</p>
-                      ))}
-                    </div>
-                  </Card>
-                )}
-
-                {data.address && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <MapPin className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-gray-900">Direccion</h3>
-                    </div>
-                    <p className="text-gray-700 text-sm">{data.address}</p>
-                  </Card>
+                    )}
+                  </GlassCard>
                 )}
 
                 {servicesList.length > 0 && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-gray-900">Servicios Adicionales</h3>
-                    </div>
+                  <GlassCard className="p-5">
+                    <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                      Servicios adicionales
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       {servicesList.map((service: string, idx: number) => (
-                        <Badge key={idx} variant="outline" className="bg-gray-50">
+                        <span key={idx} className="px-3 py-1 rounded-full text-xs font-semibold border border-purple-500/25 bg-purple-500/10 text-purple-300">
                           {service}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
-                  </Card>
+                  </GlassCard>
                 )}
 
                 {data.contractPolicies && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <FileText className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold text-gray-900">Politicas de Contratacion</h3>
-                    </div>
-                    <p className="text-gray-700 text-sm whitespace-pre-line">{data.contractPolicies}</p>
-                  </Card>
+                  <GlassCard className="p-5">
+                    <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-purple-400" />
+                      Políticas de contratación
+                    </h3>
+                    <p className="text-white/55 text-sm whitespace-pre-line leading-relaxed">{data.contractPolicies}</p>
+                  </GlassCard>
                 )}
               </>
             )}
 
-            {/* Info especifica para ARTISTAS */}
+            {/* Artist info */}
             {!isOwner && (
               <>
-                {data.yearsOfExperience && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
-                        <Briefcase className="w-6 h-6 text-secondary" />
+                {(data.yearsOfExperience || data.availability || data.serviceType || data.priceRange) && (
+                  <GlassCard className="p-5 space-y-3">
+                    <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest pb-1">Detalles profesionales</h3>
+                    {data.yearsOfExperience && (
+                      <InfoPill icon={<Briefcase className="w-4 h-4 text-purple-400" />} label="Experiencia" value={`${data.yearsOfExperience} años`} accent />
+                    )}
+                    {data.priceRange && (
+                      <InfoPill icon={<DollarSign className="w-4 h-4 text-green-400" />} label="Tarifa" value={data.priceRange} />
+                    )}
+                    {data.serviceType && (
+                      <InfoPill icon={<Music className="w-4 h-4 text-blue-400" />} label="Tipo de servicio" value={data.serviceType} />
+                    )}
+                    {data.availability && (
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="w-3.5 h-3.5 text-purple-400" />
+                          <p className="text-xs text-white/35 uppercase tracking-wider font-medium">Disponibilidad</p>
+                        </div>
+                        <div className="space-y-1">
+                          {data.availability.split(" | ").map((avail: string, idx: number) => (
+                            <p key={idx} className="text-sm text-white/60">{avail}</p>
+                          ))}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Experiencia</p>
-                        <p className="text-xl font-bold text-gray-900">{data.yearsOfExperience} Años</p>
-                      </div>
-                    </div>
-                  </Card>
+                    )}
+                  </GlassCard>
                 )}
-
-                {data.availability && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="w-5 h-5 text-secondary" />
-                      <h3 className="font-semibold text-gray-900">Disponibilidad</h3>
-                    </div>
-                    <div className="space-y-1.5">
-                      {data.availability.split(" | ").map((avail: string, idx: number) => (
-                        <p key={idx} className="text-gray-700 text-sm">{avail}</p>
-                      ))}
-                    </div>
-                  </Card>
-                )}
-
-                {data.serviceType && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Briefcase className="w-5 h-5 text-secondary" />
-                      <h3 className="font-semibold text-gray-900">Tipo de Servicio</h3>
-                    </div>
-                    <p className="text-gray-700 text-sm">{data.serviceType}</p>
-                  </Card>
-                )}
-
-                {data.priceRange && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                        <DollarSign className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Precio / Tarifa</p>
-                        <p className="text-lg font-bold text-gray-900">{data.priceRange}</p>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-
-              {/* Teléfono NO se muestra en perfil público por privacidad */}
               </>
             )}
 
-            {/* Redes sociales */}
-            <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-gray-900">Redes y Web</h3>
-              </div>
-              <div className="space-y-3">
-                {data.instagram && (
-                  <a 
-                    href={`https://instagram.com/${data.instagram.replace('@', '')}`} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-gray-700 hover:text-pink-600 transition group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                      <Instagram className="w-5 h-5 text-white" />
+            {/* Social links */}
+            {(data.instagram || data.tiktok || data.facebook || data.otherSocial || data.spotify || data.portfolioUrl) && (
+              <GlassCard className="p-5">
+                <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-purple-400" />
+                  Redes y Web
+                </h3>
+                <div className="space-y-2">
+                  {data.instagram && (
+                    <a href={`https://instagram.com/${data.instagram.replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-2.5 rounded-xl border border-white/8 bg-white/3 hover:bg-pink-500/10 hover:border-pink-500/25 transition-all group">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" }}>
+                        <Instagram className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-sm text-white/60 group-hover:text-white transition-colors truncate">{data.instagram}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/25 ml-auto flex-shrink-0" />
+                    </a>
+                  )}
+                  {data.tiktok && (
+                    <a href={`https://tiktok.com/@${data.tiktok.replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-2.5 rounded-xl border border-white/8 bg-white/3 hover:bg-white/8 hover:border-white/15 transition-all group">
+                      <div className="w-8 h-8 rounded-lg bg-black border border-white/15 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-white/60 group-hover:text-white transition-colors truncate">{data.tiktok}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/25 ml-auto flex-shrink-0" />
+                    </a>
+                  )}
+                  {data.facebook && (
+                    <a href={data.facebook.startsWith("http") ? data.facebook : `https://facebook.com/${data.facebook}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-2.5 rounded-xl border border-white/8 bg-white/3 hover:bg-blue-600/10 hover:border-blue-500/25 transition-all group">
+                      <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                        <Facebook className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-sm text-white/60 group-hover:text-white transition-colors truncate">{data.facebook}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/25 ml-auto flex-shrink-0" />
+                    </a>
+                  )}
+                  {data.spotify && (
+                    <a href={data.spotify} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-2.5 rounded-xl border border-white/8 bg-white/3 hover:bg-green-500/10 hover:border-green-500/25 transition-all group">
+                      <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+                        <Music className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-sm text-white/60 group-hover:text-white transition-colors">Spotify</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/25 ml-auto flex-shrink-0" />
+                    </a>
+                  )}
+                  {data.portfolioUrl && (
+                    <a href={data.portfolioUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-2.5 rounded-xl border border-white/8 bg-white/3 hover:bg-purple-500/10 hover:border-purple-500/25 transition-all group">
+                      <div className="w-8 h-8 rounded-lg border border-purple-500/30 flex items-center justify-center flex-shrink-0"
+                        style={{ background: "rgba(183,68,184,0.15)" }}>
+                        <Globe className="w-4 h-4 text-purple-300" />
+                      </div>
+                      <span className="text-sm text-white/60 group-hover:text-white transition-colors">Portfolio Web</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/25 ml-auto flex-shrink-0" />
+                    </a>
+                  )}
+                  {data.otherSocial && (
+                    <div className="flex items-center gap-3 p-2.5 rounded-xl border border-white/8 bg-white/3">
+                      <div className="w-8 h-8 rounded-lg bg-white/8 flex items-center justify-center flex-shrink-0">
+                        <Globe className="w-4 h-4 text-white/40" />
+                      </div>
+                      <span className="text-sm text-white/45 truncate">{data.otherSocial}</span>
                     </div>
-                    <span className="group-hover:underline">{data.instagram}</span>
-                    <ExternalLink className="w-4 h-4 ml-auto text-gray-400" />
-                  </a>
-                )}
-                {data.tiktok && (
-                  <a 
-                    href={`https://tiktok.com/@${data.tiktok.replace('@', '')}`} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-                      </svg>
-                    </div>
-                    <span className="group-hover:underline">{data.tiktok}</span>
-                    <ExternalLink className="w-4 h-4 ml-auto text-gray-400" />
-                  </a>
-                )}
-                {data.facebook && (
-                  <a 
-                    href={data.facebook.startsWith('http') ? data.facebook : `https://facebook.com/${data.facebook}`} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-gray-700 hover:text-blue-600 transition group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-                      <Facebook className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="group-hover:underline">{data.facebook}</span>
-                    <ExternalLink className="w-4 h-4 ml-auto text-gray-400" />
-                  </a>
-                )}
-                {data.otherSocial && (
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                      <Globe className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <span className="text-sm">{data.otherSocial}</span>
-                  </div>
-                )}
-                {data.spotify && (
-                  <a 
-                    href={data.spotify} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-gray-700 hover:text-green-600 transition group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center">
-                      <Music className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="group-hover:underline">Spotify</span>
-                    <ExternalLink className="w-4 h-4 ml-auto text-gray-400" />
-                  </a>
-                )}
-                {data.portfolioUrl && (
-                  <a 
-                    href={data.portfolioUrl} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-gray-700 hover:text-primary transition group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Globe className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="group-hover:underline">Portfolio Web</span>
-                    <ExternalLink className="w-4 h-4 ml-auto text-gray-400" />
-                  </a>
-                )}
-                {!data.instagram && !data.tiktok && !data.portfolioUrl && !data.spotify && !data.facebook && !data.otherSocial && (
-                  <p className="text-gray-500 text-sm">Sin redes sociales configuradas</p>
-                )}
-              </div>
-            </Card>
-
-            {/* Reportar (mobile) - MEJORADO Y MÁS VISIBLE */}
-            {!isOwnProfile && (
-              <Card className="p-4 lg:hidden border-2 border-red-200 dark:border-red-900">
-                <Button
-                  onClick={handleReportUser}
-                  variant="outline"
-                  size="default"
-                  className="w-full border-2 border-red-300 text-red-700 hover:text-white hover:bg-red-600 hover:border-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-700 font-semibold"
-                >
-                  <Flag className="h-4 w-4 mr-2" />
-                  Reportar Usuario
-                </Button>
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Reporta conductas inapropiadas o violaciones de términos
-                </p>
-              </Card>
+                  )}
+                </div>
+              </GlassCard>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modal de Contratacion */}
+      {/* ══════ HIRING MODAL ══════ */}
       <Dialog open={showHiringModal} onOpenChange={setShowHiringModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md border border-white/10 text-white"
+          style={{ background: "linear-gradient(135deg, #0d1022 0%, #080b14 100%)" }}>
           <DialogHeader>
-            <DialogTitle className="text-xl">Solicitar Contratacion</DialogTitle>
-            <DialogDescription>
-              Envia una solicitud a {data.businessName || data.artistName}
+            <DialogTitle className="text-xl font-black text-white">Solicitar Contratación</DialogTitle>
+            <DialogDescription className="text-white/45">
+              Envía una solicitud a {data.businessName || data.artistName}
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* Info del destinatario */}
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <img 
-                src={data.profileImage || "/placeholder.svg?height=50&width=50"} 
-                alt={data.businessName || data.artistName}
-                className="w-12 h-12 rounded-full object-cover"
-              />
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5">
+              <img src={data.profileImage || "/placeholder.svg?height=50&width=50"} alt={profileName}
+                className="w-11 h-11 rounded-xl object-cover border border-white/15" />
               <div>
-                <p className="font-semibold text-gray-900">{data.businessName || data.artistName}</p>
-                <p className="text-sm text-gray-500">{isOwner ? data.businessType : data.category}</p>
+                <p className="font-bold text-white text-sm">{profileName}</p>
+                <p className="text-xs text-white/35">{categoryLabel}</p>
               </div>
             </div>
-
-            {/* Info del remitente */}
             {currentUser && (
-              <div className="flex items-center gap-3 p-3 border border-dashed border-gray-200 rounded-lg">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/12 bg-white/3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
                   {currentUser.firstName?.charAt(0)?.toUpperCase() || "U"}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Solicitud de:</p>
-                  <p className="font-medium text-gray-900">
-                    {currentUser.firstName} {currentUser.lastName}
-                  </p>
+                  <p className="text-xs text-white/35">Solicitud de:</p>
+                  <p className="text-sm font-semibold text-white">{currentUser.firstName} {currentUser.lastName}</p>
                 </div>
               </div>
             )}
-
-            {/* Campo de fecha propuesta */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Fecha propuesta (opcional)
-              </label>
-              <Input 
-                type="date" 
-                value={proposedDate}
-                onChange={(e) => setProposedDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full"
-              />
+              <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Fecha propuesta (opcional)</label>
+              <Input type="date" value={proposedDate} onChange={(e) => setProposedDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="bg-white/5 border-white/12 text-white focus:border-purple-500/50" />
             </div>
-
-            {/* Campo de mensaje */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Mensaje (opcional)
-              </label>
-              <textarea 
-                value={hiringMessage}
-                onChange={(e) => setHiringMessage(e.target.value)}
-                placeholder={`Hola! Me interesa contratar tus servicios para...`}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Este mensaje se enviara junto con tu solicitud
-              </p>
+              <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Mensaje (opcional)</label>
+              <textarea value={hiringMessage} onChange={(e) => setHiringMessage(e.target.value)}
+                placeholder={`Hola! Me interesa contratar tus servicios para...`} rows={4}
+                className="w-full px-3 py-2 rounded-lg border border-white/12 bg-white/5 text-white placeholder-white/25 focus:outline-none resize-none text-sm" />
+              <p className="text-xs text-white/25 mt-1">Este mensaje se enviará junto con tu solicitud</p>
             </div>
           </div>
-
-          {/* Botones */}
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowHiringModal(false)}
-              className="flex-1"
-            >
+          <div className="flex gap-3 pt-1">
+            <Button variant="outline" onClick={() => setShowHiringModal(false)}
+              className="flex-1 border-white/15 bg-white/5 text-white/60 hover:text-white hover:bg-white/10">
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSendHiringRequest}
-              className="flex-1 bg-secondary hover:bg-secondary/90"
-            >
+            <Button onClick={handleSendHiringRequest} className="flex-1 font-bold border-0"
+              style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
               <Send className="h-4 w-4 mr-2" />
               Enviar Solicitud
             </Button>

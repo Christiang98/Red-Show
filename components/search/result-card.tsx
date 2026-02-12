@@ -142,7 +142,7 @@ export function ResultCard({
               {isOwner && capacity && (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Users className="w-4 h-4 text-primary" />
-                  <span>Capacidad: <strong className="text-foreground">{capacity} pers.</strong></span>
+                  <span>Capacidad: <strong className="text-foreground">{capacity} personas</strong></span>
                 </span>
               )}
 
@@ -156,7 +156,7 @@ export function ResultCard({
               {!isOwner && yearsOfExperience && (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Briefcase className="w-4 h-4 text-primary" />
-                  <span><strong className="text-foreground">{yearsOfExperience}</strong> anos exp.</span>
+                  <span><strong className="text-foreground">{yearsOfExperience}</strong> años de experiencia</span>
                 </span>
               )}
             </div>
