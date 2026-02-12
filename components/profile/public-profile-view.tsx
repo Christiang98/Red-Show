@@ -80,6 +80,12 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
   const [showHiringModal, setShowHiringModal] = useState(false)
   const [hiringMessage, setHiringMessage] = useState("")
   const [proposedDate, setProposedDate] = useState("")
+  const [showReviewForm, setShowReviewForm] = useState(false)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHoverRating, setReviewHoverRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState("")
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [localReviews, setLocalReviews] = useState<any[]>([])
   const router = useRouter()
   const { toast } = useToast()
 
@@ -90,7 +96,16 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
   useEffect(() => {
     const user = getCurrentUser()
     setCurrentUser(user)
-    setIsOwnProfile(user && user.id === userId)
+    const isOwn = user && user.id === userId
+    setIsOwnProfile(isOwn)
+    setLocalReviews(data.reviews || [])
+    
+    console.log('[DEBUG] Perfil público:', { 
+      currentUserId: user?.id, 
+      profileUserId: userId, 
+      isOwnProfile: isOwn,
+      shouldShowReportButton: !isOwn
+    })
     
     if (user && user.id !== userId) {
       checkExistingBooking(user.id)
@@ -179,6 +194,43 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
     }
   }
 
+  const handleSubmitReview = async () => {
+    if (!currentUser || reviewRating === 0 || !reviewComment.trim()) return
+    setReviewLoading(true)
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewerId: currentUser.id,
+          reviewedUserId: userId,
+          rating: reviewRating,
+          comment: reviewComment,
+        }),
+      })
+      const result = await response.json()
+      if (response.ok) {
+        const newReview = {
+          author: `${currentUser.firstName} ${currentUser.lastName}`,
+          rating: reviewRating,
+          comment: reviewComment,
+          date: "Ahora",
+        }
+        setLocalReviews((prev) => [newReview, ...prev])
+        setShowReviewForm(false)
+        setReviewRating(0)
+        setReviewComment("")
+        toast({ title: "Reseña publicada", description: "Tu reseña fue enviada exitosamente." })
+      } else {
+        toast({ title: "Error", description: result.error || "No se pudo publicar la reseña.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "Error de conexión al publicar la reseña.", variant: "destructive" })
+    } finally {
+      setReviewLoading(false)
+    }
+  }
+
   const handleGoToChat = () => {
     router.push(`/messaging?userId=${userId}`)
   }
@@ -192,12 +244,19 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
   
   // Parsear servicios adicionales
   const servicesList = data.additionalServices 
-    ? data.additionalServices.split(",").map((s: string) => s.trim()).filter(Boolean)
+    ? data.additionalServices
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter((s: string) => Boolean(s) && s !== "__other__")
     : []
+  // Agregar servicio personalizado si existe
+  if (data.otherService && data.otherService.trim()) {
+    servicesList.push(data.otherService.trim())
+  }
 
-  // Calcular rating promedio
-  const avgRating = data.reviews?.length > 0 
-    ? data.reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / data.reviews.length 
+  // Calcular rating promedio con localReviews
+  const avgRating = localReviews?.length > 0 
+    ? localReviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / localReviews.length 
     : 0
 
   // Obtener ubicacion completa sin duplicados
@@ -266,7 +325,9 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                 <div className="flex items-center gap-2 mb-2">
                   <Badge className={`${isOwner ? 'bg-primary' : 'bg-secondary'} text-white`}>
                     {isOwner ? <Building2 className="w-3 h-3 mr-1" /> : <Music className="w-3 h-3 mr-1" />}
-                    {isOwner ? (data.businessType || "Espacio") : (data.category || "Artista")}
+                    {isOwner 
+                      ? (data.businessType === "other" ? (data.otherBusinessType || "Otro") : (data.businessType || "Espacio")) 
+                      : (data.category === "other" ? (data.otherCategory || "Otro") : (data.category || "Artista"))}
                   </Badge>
                   {avgRating > 0 && (
                     <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full">
@@ -298,7 +359,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
           <div className="lg:col-span-2 space-y-6">
             
             {/* Botones de accion (mobile) */}
-            <div className="lg:hidden flex gap-3">
+            <div className="lg:hidden flex gap-3 mt-6 mb-8">
               {isOwnProfile ? (
                 <Button asChild className="flex-1 bg-primary hover:bg-primary/90">
                   <Link href={isOwner ? "/profile/owner" : "/profile/artist"}>Editar Perfil</Link>
@@ -404,33 +465,108 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
               </Card>
             )}
 
-            {/* Resenas */}
+            {/* Reseñas */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <Star className="w-5 h-5 text-primary" />
-                  Resenas
+                  Reseñas
                 </h2>
                 {avgRating > 0 && (
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-2xl font-bold text-gray-900">{avgRating.toFixed(1)}</p>
-                      <p className="text-xs text-gray-500">{data.reviews?.length} resenas</p>
+                      <p className="text-xs text-gray-500">{localReviews.length} reseña{localReviews.length !== 1 ? "s" : ""}</p>
                     </div>
                     <StarRating rating={avgRating} size="lg" />
                   </div>
                 )}
               </div>
+
+              {/* Botón para dejar reseña (solo si no es perfil propio y está logueado) */}
+              {!isOwnProfile && currentUser && !showReviewForm && (
+                <button
+                  onClick={() => setShowReviewForm(true)}
+                  className="w-full mb-5 p-3 border-2 border-dashed border-secondary/40 rounded-xl text-secondary hover:border-secondary hover:bg-secondary/5 transition text-sm font-medium flex items-center justify-center gap-2"
+                >
+                  <Star className="h-4 w-4" />
+                  Dejar una reseña
+                </button>
+              )}
+
+              {/* Formulario de reseña */}
+              {showReviewForm && !isOwnProfile && (
+                <div className="mb-5 p-4 bg-secondary/5 border border-secondary/20 rounded-xl space-y-4">
+                  <h3 className="font-semibold text-foreground text-sm">Tu reseña</h3>
+                  
+                  {/* Estrellas interactivas */}
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        onMouseEnter={() => setReviewHoverRating(star)}
+                        onMouseLeave={() => setReviewHoverRating(0)}
+                        className="transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`w-8 h-8 transition-colors ${
+                            star <= (reviewHoverRating || reviewRating)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "fill-gray-200 text-gray-200"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {reviewRating === 0 ? "Selecciona una calificación" : 
+                       reviewRating === 1 ? "Malo" : reviewRating === 2 ? "Regular" : 
+                       reviewRating === 3 ? "Bueno" : reviewRating === 4 ? "Muy bueno" : "Excelente"}
+                    </span>
+                  </div>
+
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Contá tu experiencia con este usuario..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary bg-background text-foreground resize-none text-sm"
+                  />
+                  
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowReviewForm(false); setReviewRating(0); setReviewComment("") }}
+                      className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSubmitReview}
+                      disabled={reviewRating === 0 || !reviewComment.trim() || reviewLoading}
+                      className="flex-1 px-4 py-2 rounded-lg bg-secondary text-white text-sm font-semibold hover:bg-secondary/90 disabled:opacity-50 transition"
+                    >
+                      {reviewLoading ? "Publicando..." : "Publicar reseña"}
+                    </button>
+                  </div>
+                </div>
+              )}
               
-              {data.reviews && data.reviews.length > 0 ? (
+              {localReviews && localReviews.length > 0 ? (
                 <div className="space-y-4">
-                  {data.reviews.map((review: any, idx: number) => (
+                  {localReviews.map((review: any, idx: number) => (
                     <div key={idx} className="bg-gray-50 rounded-xl p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold">
-                            {review.author?.charAt(0)?.toUpperCase() || "U"}
-                          </div>
+                          {review.authorAvatar ? (
+                            <img src={review.authorAvatar} alt={review.author} className="w-10 h-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold">
+                              {review.author?.charAt(0)?.toUpperCase() || "U"}
+                            </div>
+                          )}
                           <div>
                             <p className="font-semibold text-gray-900">{review.author}</p>
                             <p className="text-xs text-gray-500">{review.date || "Hace tiempo"}</p>
@@ -445,7 +581,10 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
               ) : (
                 <div className="text-center py-8">
                   <Star className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-500">Aun no hay resenas</p>
+                  <p className="text-gray-500">Aún no hay reseñas</p>
+                  {!isOwnProfile && currentUser && (
+                    <p className="text-sm text-muted-foreground mt-1">¡Sé el primero en dejar una reseña!</p>
+                  )}
                 </div>
               )}
             </Card>
@@ -456,47 +595,56 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
             
             {/* Card de acciones (desktop) */}
             <Card className="p-5 hidden lg:block sticky top-20">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {isOwnProfile ? (
-                  <Button asChild className="w-full bg-primary hover:bg-primary/90 h-11 font-semibold">
+                  <Button asChild className="w-full bg-primary hover:bg-primary/90 h-12 font-semibold text-base shadow-lg">
                     <Link href={isOwner ? "/profile/owner" : "/profile/artist"}>Editar Perfil</Link>
                   </Button>
                 ) : (
                   <>
                     {hiringStatus === "idle" && (
-                      <Button onClick={openHiringModal} className="w-full bg-secondary hover:bg-secondary/90 h-11 font-semibold">
-                        <Send className="h-4 w-4 mr-2" />
+                      <Button onClick={openHiringModal} className="w-full bg-secondary hover:bg-secondary/90 h-12 font-semibold text-base shadow-lg mb-2">
+                        <Send className="h-5 w-5 mr-2" />
                         Solicitar Contratacion
                       </Button>
                     )}
                     {hiringStatus === "loading" && (
-                      <Button disabled className="w-full h-11">Enviando solicitud...</Button>
+                      <Button disabled className="w-full h-12 mb-2">Enviando solicitud...</Button>
                     )}
                     {hiringStatus === "pending" && (
-                      <Button disabled className="w-full h-11 bg-gray-200 text-gray-600">
-                        <Check className="h-4 w-4 mr-2" />
+                      <Button disabled className="w-full h-12 bg-gray-200 text-gray-600 mb-2">
+                        <Check className="h-5 w-5 mr-2" />
                         Solicitud Enviada
                       </Button>
                     )}
                     {hiringStatus === "accepted" && (
-                      <Button onClick={handleGoToChat} className="w-full h-11 bg-green-600 hover:bg-green-700">
-                        <Send className="h-4 w-4 mr-2" />
+                      <Button onClick={handleGoToChat} className="w-full h-12 bg-green-600 hover:bg-green-700 shadow-lg mb-2">
+                        <Send className="h-5 w-5 mr-2" />
                         Enviar Mensaje
                       </Button>
                     )}
                   </>
                 )}
                 
+                {/* Separador visual */}
+                {!isOwnProfile && <div className="border-t-2 border-gray-200 dark:border-gray-700 my-6" />}
+                
+                {/* Botón de reportar - MEJORADO Y MÁS VISIBLE */}
                 {!isOwnProfile && (
-                  <Button
-                    onClick={handleReportUser}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Flag className="h-4 w-4 mr-2" />
-                    Reportar
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleReportUser}
+                      variant="outline"
+                      size="default"
+                      className="w-full border-2 border-red-300 text-red-700 hover:text-white hover:bg-red-600 hover:border-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-700 dark:hover:border-red-700 font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      <Flag className="h-4 w-4 mr-2" />
+                      Reportar Usuario
+                    </Button>
+                    <p className="text-xs text-center text-muted-foreground px-2">
+                      Reporta conductas inapropiadas o violaciones de términos
+                    </p>
+                  </div>
                 )}
               </div>
             </Card>
@@ -625,19 +773,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                   </Card>
                 )}
 
-                {data.phone && (
-                  <Card className="p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                        <Phone className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Contacto</p>
-                        <p className="text-lg font-semibold text-gray-900">{data.phone}</p>
-                      </div>
-                    </div>
-                  </Card>
-                )}
+              {/* Teléfono NO se muestra en perfil público por privacidad */}
               </>
             )}
 
@@ -734,17 +870,22 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
               </div>
             </Card>
 
-            {/* Reportar (mobile) */}
+            {/* Reportar (mobile) - MEJORADO Y MÁS VISIBLE */}
             {!isOwnProfile && (
-              <Button
-                onClick={handleReportUser}
-                variant="ghost"
-                size="sm"
-                className="w-full lg:hidden text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Flag className="h-4 w-4 mr-2" />
-                Reportar Usuario
-              </Button>
+              <Card className="p-4 lg:hidden border-2 border-red-200 dark:border-red-900">
+                <Button
+                  onClick={handleReportUser}
+                  variant="outline"
+                  size="default"
+                  className="w-full border-2 border-red-300 text-red-700 hover:text-white hover:bg-red-600 hover:border-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-700 font-semibold"
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  Reportar Usuario
+                </Button>
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Reporta conductas inapropiadas o violaciones de términos
+                </p>
+              </Card>
             )}
           </div>
         </div>

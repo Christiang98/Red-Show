@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { getCurrentUser } from "@/lib/auth"
-import { HelpCircle, ArrowLeft } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { HelpCircle, ArrowLeft, CheckCircle2 } from "lucide-react"
 
 export default function SupportPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     subject: "",
@@ -58,20 +60,55 @@ export default function SupportPage() {
       const result = await response.json()
 
       if (response.ok) {
-        alert("Ticket de soporte creado exitosamente. Te responderemos pronto.")
+        toast({
+          title: (
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-green-800 dark:text-green-200 text-lg">¡Ticket Enviado!</p>
+              </div>
+            </div>
+          ),
+          description: (
+            <div className="mt-2 ml-13 space-y-2">
+              <p className="text-green-700 dark:text-green-300 font-medium">
+                Tu solicitud ha sido recibida con éxito
+              </p>
+              <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                <p className="text-sm text-green-600 dark:text-green-400 flex items-start gap-2">
+                  <span className="text-lg">⏱️</span>
+                  <span>Nuestro equipo de soporte revisará tu consulta y te responderá en un plazo de <strong>24-48 horas</strong></span>
+                </p>
+              </div>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-2">Ticket #{result.ticketId || Date.now().toString().slice(-6)}</p>
+            </div>
+          ),
+          className: "border-2 border-green-400 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 shadow-xl",
+          duration: 6000,
+        })
         setFormData({
           subject: "",
           category: "",
           message: "",
           priority: "medium",
         })
-        router.push("/dashboard")
+        setTimeout(() => router.push("/dashboard"), 3000)
       } else {
-        alert(`Error: ${result.error}`)
+        toast({
+          title: "Error al crear el ticket",
+          description: result.error || "Hubo un problema al enviar tu solicitud. Por favor intenta nuevamente.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("[v0] Error creando ticket:", error)
-      alert("Error creando el ticket de soporte")
+      toast({
+        title: "Error de conexión",
+        description: "No se pudo enviar el ticket de soporte. Por favor verifica tu conexión a internet e intenta nuevamente.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

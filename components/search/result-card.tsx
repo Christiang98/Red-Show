@@ -19,9 +19,11 @@ interface ResultCardProps {
   capacity?: number
   services?: string[]
   businessType?: string
+  otherBusinessType?: string
   // Campos para Artistas
   priceRange?: string
   yearsOfExperience?: number
+  otherCategory?: string
 }
 
 // Funcion para mostrar rating con estrellas
@@ -64,11 +66,18 @@ export function ResultCard({
   capacity,
   services = [],
   businessType,
+  otherBusinessType,
   priceRange,
-  yearsOfExperience
+  yearsOfExperience,
+  otherCategory
 }: ResultCardProps) {
   const isOwner = type === "owner"
   const priceDisplay = getPriceDisplay(priceRange)
+  
+  // Mostrar otherBusinessType o otherCategory si aplica
+  const displayCategory = isOwner
+    ? (businessType === "other" ? (otherBusinessType || "Otro") : businessType)
+    : (category === "other" ? (otherCategory || "Otro") : category)
   
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group border-border/50 hover:border-primary/20 bg-card">
@@ -88,18 +97,24 @@ export function ResultCard({
               className={`${isOwner ? 'bg-primary' : 'bg-secondary'} text-white shadow-lg`}
             >
               {isOwner ? (
-                <><Building2 className="w-3 h-3 mr-1" /> {businessType || "Espacio"}</>
+                <><Building2 className="w-3 h-3 mr-1" /> {displayCategory || "Espacio"}</>
               ) : (
-                <><Music className="w-3 h-3 mr-1" /> {category || "Artista"}</>
+                <><Music className="w-3 h-3 mr-1" /> {displayCategory || "Artista"}</>
               )}
             </Badge>
           </div>
 
           {/* Rating en la imagen */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-white/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow">
-            <StarRating rating={rating} />
-            <span className="text-gray-900 text-sm font-bold">{rating.toFixed(1)}</span>
-          </div>
+          {rating > 0 ? (
+            <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-white/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow">
+              <StarRating rating={rating} />
+              <span className="text-gray-900 text-sm font-bold">{rating.toFixed(1)}</span>
+            </div>
+          ) : (
+            <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow">
+              <span className="text-gray-500 text-xs font-medium">Sin reseñas</span>
+            </div>
+          )}
         </div>
 
         {/* Contenido */}
@@ -110,8 +125,8 @@ export function ResultCard({
               <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
                 {name}
               </h3>
-              {!isOwner && category && (
-                <p className="text-sm text-secondary font-medium">{category}</p>
+              {!isOwner && displayCategory && (
+                <p className="text-sm text-secondary font-medium">{displayCategory}</p>
               )}
             </div>
 

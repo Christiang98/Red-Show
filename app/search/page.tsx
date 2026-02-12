@@ -182,6 +182,8 @@ export default function SearchPage() {
                     type={result.role === "owner" ? "owner" : "artist"}
                     name={result.name}
                     category={result.category || "Sin categoria"}
+                    otherCategory={result.otherCategory || ""}
+                    otherBusinessType={result.otherBusinessType || ""}
                     location={result.location || "Sin ubicacion"}
                     rating={result.rating || 0}
                     image={result.avatar_url || result.image || "/placeholder.svg"}

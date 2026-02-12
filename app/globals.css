@@ -4,42 +4,42 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Red Show custom color palette */
-  --background: #fffcf2;
-  --foreground: #2d2d2d;
+  /* Red Show custom color palette - COLORES VIBRANTES */
+  --background: #FFFCF2;
+  --foreground: #2D2D2D;
   --card: #ffffff;
-  --card-foreground: #2d2d2d;
+  --card-foreground: #2D2D2D;
   --popover: #ffffff;
-  --popover-foreground: #2d2d2d;
-  --primary: #001c55;
-  --primary-foreground: #fffcf2;
-  --secondary: #b744b8;
+  --popover-foreground: #2D2D2D;
+  --primary: #001C55;
+  --primary-foreground: #FFFCF2;
+  --secondary: #B744B8;
   --secondary-foreground: #ffffff;
-  --muted: #f0f0f0;
+  --muted: #F0F0F0;
   --muted-foreground: #666666;
-  --accent: #b744b8;
+  --accent: #B744B8;
   --accent-foreground: #ffffff;
-  --destructive: #c62828;
+  --destructive: #C62828;
   --destructive-foreground: #ffffff;
-  --success: #4caf50;
+  --success: #4CAF50;
   --success-foreground: #ffffff;
   --border: #e0e0e0;
   --input: #f9f9f9;
-  --ring: #b744b8;
-  --chart-1: #001c55;
-  --chart-2: #b744b8;
-  --chart-3: #4caf50;
+  --ring: #B744B8;
+  --chart-1: #001C55;
+  --chart-2: #B744B8;
+  --chart-3: #4CAF50;
   --chart-4: #ffa500;
   --chart-5: #ff6b6b;
-  --radius: 0.625rem;
-  --sidebar: #001c55;
-  --sidebar-foreground: #fffcf2;
-  --sidebar-primary: #b744b8;
+  --radius: 0.75rem;
+  --sidebar: #001C55;
+  --sidebar-foreground: #FFFCF2;
+  --sidebar-primary: #B744B8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #b744b8;
+  --sidebar-accent: #B744B8;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #003366;
-  --sidebar-ring: #b744b8;
+  --sidebar-ring: #B744B8;
 }
 
 .dark {
@@ -126,7 +126,120 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
+    /* FONDO MUY VISUAL CON MÚLTIPLES CAPAS DE COLOR */
+    background-image: 
+      /* Manchas de color violeta */
+      radial-gradient(ellipse at 10% 20%, rgba(183, 68, 184, 0.12) 0%, transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(183, 68, 184, 0.10) 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 90%, rgba(183, 68, 184, 0.08) 0%, transparent 50%),
+      
+      /* Manchas de color azul */
+      radial-gradient(circle at 30% 60%, rgba(0, 28, 85, 0.10) 0%, transparent 45%),
+      radial-gradient(ellipse at 80% 75%, rgba(0, 28, 85, 0.08) 0%, transparent 40%),
+      
+      /* Patrón de puntos sutil */
+      radial-gradient(circle, rgba(183, 68, 184, 0.06) 1px, transparent 1px),
+      
+      /* Líneas diagonales muy sutiles */
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 100px,
+        rgba(183, 68, 184, 0.02) 100px,
+        rgba(183, 68, 184, 0.02) 102px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 100px,
+        rgba(0, 28, 85, 0.02) 100px,
+        rgba(0, 28, 85, 0.02) 102px
+      ),
+      
+      /* Gradiente base */
+      linear-gradient(to bottom right, #FFFCF2, #FFF9E6);
+    
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 10px 10px, 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: fixed;
+    background-position: center;
   }
+}
+
+/* === CARDS CON BORDES COLORIDOS Y EFECTOS === */
+[class*="card"],
+[class*="Card"] {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.98), rgba(255, 252, 242, 0.95)) !important;
+  box-shadow: 
+    0 1px 3px rgba(0,0,0,0.08), 
+    0 1px 2px rgba(0,0,0,0.06),
+    0 0 0 1px rgba(183, 68, 184, 0.08) !important;
+  border: 1.5px solid rgba(183, 68, 184, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: visible !important;
+}
+
+[class*="card"]::before,
+[class*="Card"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #B744B8 0%, #001C55 50%, #B744B8 100%);
+  opacity: 0.5;
+}
+
+[class*="card"]:hover,
+[class*="Card"]:hover {
+  box-shadow: 
+    0 8px 24px rgba(0,28,85,0.15), 
+    0 4px 8px rgba(183, 68, 184,0.12),
+    0 0 0 2px rgba(183, 68, 184, 0.20) !important;
+  transform: translateY(-3px) !important;
+  border-color: rgba(183, 68, 184, 0.35) !important;
+}
+
+/* === SCROLLBAR ULTRA PERSONALIZADO === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, rgba(240, 240, 240, 0.6), rgba(255, 252, 242, 0.8));
+  border-radius: 5px;
+  border: 1px solid rgba(183, 68, 184, 0.10);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #B744B8 0%, #d966ff 50%, #B744B8 100%);
+  border-radius: 5px;
+  border: 2px solid rgba(255, 252, 242, 0.3);
+  transition: all 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #001C55 0%, #003399 50%, #001C55 100%);
+  border-color: rgba(255, 252, 242, 0.5);
+}
+
+/* === ANIMACIÓN DE ENTRADA MEJORADA === */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }

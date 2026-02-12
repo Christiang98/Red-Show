@@ -46,8 +46,8 @@ export function AppNavbar() {
   const isAdmin = user.role === "admin"
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 py-3">
+    <nav className="bg-[#FFFCF2]/95 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 py-2.5">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
@@ -124,7 +124,9 @@ export function AppNavbar() {
                     <p className="text-sm font-semibold text-gray-900">
                       {user.firstName}
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {user.role === "owner" ? "Dueño" : user.role === "artist" ? "Artista/Emprendedor" : user.role}
+                    </p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log("[v0] Body recibido:", { ...body, password: "***" })
 
-    const { email, password, firstName, lastName, role } = body
+    const { email, password, firstName, lastName, role, phone } = body
 
     if (!email || !password || !firstName || !lastName || !role) {
       console.log("[v0] Campos faltantes")
@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Usuario creado con ID:", result.id)
 
     console.log("[v0] Creando perfil...")
-    await runAsync("INSERT INTO profiles (user_id) VALUES (?)", [result.id])
+    // Intentar agregar columna phone al perfil si no existe
+    try {
+      await runAsync("ALTER TABLE profiles ADD COLUMN phone TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
+    
+    await runAsync("INSERT INTO profiles (user_id, phone) VALUES (?, ?)", [result.id, phone || ""])
     console.log("[v0] Perfil creado exitosamente")
 
     return NextResponse.json(

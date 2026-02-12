@@ -478,53 +478,76 @@ export function ArtistProfileForm() {
             </div>
           </div>
 
-          {/* Disponibilidad Horaria - MEJORADO */}
+          {/* Disponibilidad Horaria - misma estética que Owner */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-2">
               <Calendar className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-semibold text-foreground">Disponibilidad Horaria</h3>
             </div>
-            <p className="text-sm text-muted-foreground">Activa los dias en que estas disponible para trabajar</p>
+            <p className="text-sm text-muted-foreground">Activa los días en que estás disponible para trabajar</p>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {formData.availability.map((item, index) => (
-                <div
+                <button
                   key={index}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
+                  type="button"
+                  onClick={() => handleAvailabilityChange(index, "enabled", !item.enabled)}
+                  className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer ${
                     item.enabled
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/30"
+                      ? "border-primary bg-primary/10 shadow-md"
+                      : "border-border bg-card hover:border-primary/50 hover:bg-muted/50"
                   }`}
                 >
-                  <div className="flex items-center gap-3 w-40">
-                    <Switch
-                      checked={item.enabled}
-                      onCheckedChange={(checked) => handleAvailabilityChange(index, "enabled", checked)}
-                    />
-                    <label className={`text-sm font-medium ${item.enabled ? "text-primary" : "text-muted-foreground"}`}>
-                      {item.day}
-                    </label>
+                  {/* Checkbox visual */}
+                  <div
+                    className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      item.enabled
+                        ? "bg-primary border-primary"
+                        : "border-muted-foreground/50 bg-background"
+                    }`}
+                  >
+                    {item.enabled && <Check className="h-4 w-4 text-primary-foreground" />}
                   </div>
-                  <div className="flex items-center gap-2 flex-1">
+
+                  {/* Nombre del día */}
+                  <span
+                    className={`text-base font-semibold w-28 text-left ${
+                      item.enabled ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    {item.day}
+                  </span>
+
+                  {/* Horarios */}
+                  <div
+                    className="flex items-center gap-2 flex-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Clock className={`h-4 w-4 ${item.enabled ? "text-primary" : "text-muted-foreground"}`} />
                     <Input
                       type="time"
                       value={item.from}
                       onChange={(e) => handleAvailabilityChange(index, "from", e.target.value)}
                       disabled={!item.enabled}
-                      className={`w-28 ${!item.enabled && "opacity-50"}`}
+                      className={`w-28 ${!item.enabled ? "opacity-40" : "border-primary/50"}`}
                     />
-                    <span className="text-muted-foreground">a</span>
+                    <span className={`${item.enabled ? "text-foreground" : "text-muted-foreground"}`}>a</span>
                     <Input
                       type="time"
                       value={item.to}
                       onChange={(e) => handleAvailabilityChange(index, "to", e.target.value)}
                       disabled={!item.enabled}
-                      className={`w-28 ${!item.enabled && "opacity-50"}`}
+                      className={`w-28 ${!item.enabled ? "opacity-40" : "border-primary/50"}`}
                     />
                   </div>
-                  {item.enabled && <Check className="h-5 w-5 text-success" />}
-                </div>
+
+                  {/* Indicador activo */}
+                  {item.enabled && (
+                    <span className="text-xs font-medium bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                      Disponible
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
           </div>
@@ -638,33 +661,47 @@ export function ArtistProfileForm() {
             </div>
           </div>
 
-          {/* Publicacion - MEJORADO */}
-          <div className="p-6 bg-gradient-to-r from-secondary/10 to-primary/10 border-2 border-secondary/30 rounded-xl">
+          {/* Publicacion - mayor visibilidad */}
+          <div className={`p-6 rounded-xl border-2 transition-all ${formData.isPublished 
+            ? 'bg-gradient-to-r from-secondary/15 to-primary/15 border-secondary shadow-lg shadow-secondary/10' 
+            : 'bg-gradient-to-r from-secondary/5 to-primary/5 border-secondary/30'}`}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
-                <h4 className="text-lg font-semibold text-foreground mb-1">Publicar mi perfil</h4>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-3 h-3 rounded-full ${formData.isPublished ? 'bg-success animate-pulse' : 'bg-gray-300'}`} />
+                  <h4 className="text-lg font-bold text-foreground">
+                    {formData.isPublished ? "✅ Perfil Publicado" : "Publicar Perfil Público"}
+                  </h4>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Al activar esta opcion, tu perfil sera visible en las busquedas publicas y podras recibir
-                  solicitudes de contratacion.
+                  {formData.isPublished 
+                    ? "Tu perfil es visible en las búsquedas y puede recibir solicitudes." 
+                    : "Activá esta opción para aparecer en búsquedas y recibir solicitudes de contratación."}
                 </p>
               </div>
               <Switch
                 checked={formData.isPublished}
                 onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPublished: checked }))}
-                className="scale-125"
+                className="scale-150"
               />
             </div>
+            {!formData.isPublished && (
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+                <span className="text-amber-600 text-lg">⚠️</span>
+                <span className="text-sm text-amber-800 font-medium">Tu perfil no está visible para otros usuarios hasta que lo publiques.</span>
+              </div>
+            )}
             {formData.isPublished && (
               <div className="mt-4 flex items-center gap-2 text-success">
                 <Check className="h-5 w-5" />
-                <span className="text-sm font-medium">Tu perfil sera visible para todos los usuarios</span>
+                <span className="text-sm font-semibold">Tu perfil es visible para todos los usuarios de Red Show</span>
               </div>
             )}
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-lg"
+            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground h-14 text-lg font-bold shadow-lg shadow-primary/20 rounded-xl transition-all hover:shadow-xl hover:shadow-primary/30"
             disabled={loading}
           >
             {loading ? "Guardando..." : "Guardar Perfil"}

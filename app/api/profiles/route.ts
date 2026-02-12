@@ -125,6 +125,11 @@ export async function POST(request: NextRequest) {
       } catch {
         // La columna ya existe, ignorar
       }
+      try {
+        await runQuery("ALTER TABLE owner_profiles ADD COLUMN other_service TEXT DEFAULT ''", [])
+      } catch {
+        // La columna ya existe, ignorar
+      }
 
       if (existingOwner) {
         await runQuery(
@@ -133,7 +138,7 @@ export async function POST(request: NextRequest) {
             description = ?, business_hours = ?, additional_services = ?,
             policies = ?, cuit_cuil = ?, profile_image = ?, featured_image = ?, 
             is_published = ?, other_business_type = ?, city = ?, neighborhood = ?,
-            business_hours_data = ?, services = ?, gallery_images = ?
+            business_hours_data = ?, services = ?, gallery_images = ?, other_service = ?
           WHERE user_id = ?`,
           [
             specificProfileData.businessName,
@@ -154,6 +159,7 @@ export async function POST(request: NextRequest) {
             specificProfileData.businessHoursData || "[]",
             specificProfileData.services || "[]",
             specificProfileData.galleryImages || "[]",
+            specificProfileData.otherService || "",
             userId,
           ],
         )
@@ -163,8 +169,8 @@ export async function POST(request: NextRequest) {
           (user_id, business_name, business_type, address, capacity, description, 
            business_hours, additional_services, policies, cuit_cuil, profile_image, 
            featured_image, is_published, other_business_type, city, neighborhood, 
-           business_hours_data, services, gallery_images) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           business_hours_data, services, gallery_images, other_service) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             userId,
             specificProfileData.businessName,
@@ -185,6 +191,7 @@ export async function POST(request: NextRequest) {
             specificProfileData.businessHoursData || "[]",
             specificProfileData.services || "[]",
             specificProfileData.galleryImages || "[]",
+            specificProfileData.otherService || "",
           ],
         )
       }

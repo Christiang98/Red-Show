@@ -28,6 +28,7 @@ export function RegisterForm() {
     confirmPassword: "",
     phone: "",
   })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -48,6 +49,11 @@ export function RegisterForm() {
       setError(
         "La contraseña no cumple los requisitos de seguridad. Debe tener al menos 8 caracteres y cumplir con al menos 4 de los 5 requisitos mostrados.",
       )
+      return
+    }
+
+    if (!acceptedTerms) {
+      setError("Debes aceptar los Términos y Condiciones para registrarte.")
       return
     }
 
@@ -234,11 +240,33 @@ export function RegisterForm() {
             />
           </div>
 
+          {/* Términos y Condiciones */}
+          <div className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${acceptedTerms ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}>
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 w-5 h-5 accent-primary flex-shrink-0 cursor-pointer"
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-foreground cursor-pointer leading-relaxed">
+              He leído y acepto los{" "}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="text-secondary font-semibold hover:underline"
+              >
+                Términos y Condiciones
+              </Link>{" "}
+              de uso de Red Show. Entiendo que mi información será tratada según la política de privacidad de la plataforma.
+            </label>
+          </div>
+
           <div className="pt-4 flex gap-4">
             <Button
               type="submit"
-              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={loading}
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
+              disabled={loading || !acceptedTerms}
             >
               {loading ? "Registrando..." : "Crear Cuenta"}
             </Button>

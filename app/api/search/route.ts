@@ -16,6 +16,7 @@ export async function GET(request: Request) {
         p.bio, p.location, p.avatar_url, p.instagram, p.tiktok,
         ap.stage_name as artist_name, 
         ap.category as artist_category,
+        ap.other_category,
         ap.experience_years,
         ap.profile_image as artist_image,
         ap.price_range,
@@ -23,12 +24,15 @@ export async function GET(request: Request) {
         ap.is_published as artist_published,
         op.business_name, 
         op.business_type,
+        op.other_business_type,
         op.capacity,
         op.city as owner_city,
         op.neighborhood as owner_neighborhood,
         op.profile_image as owner_image,
         op.is_published as owner_published,
-        op.additional_services
+        op.additional_services,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_user_id = u.id), 0) as avg_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_user_id = u.id), 0) as review_count
       FROM users u
       LEFT JOIN profiles p ON u.id = p.user_id
       LEFT JOIN artist_profiles ap ON u.id = ap.user_id
@@ -84,13 +88,16 @@ export async function GET(request: Request) {
           ? row.business_name || `${row.first_name} ${row.last_name}`
           : row.artist_name || `${row.first_name} ${row.last_name}`,
       category: row.role === "owner" ? row.business_type : row.artist_category,
+      otherCategory: row.other_category || "",
+      otherBusinessType: row.other_business_type || "",
       location:
         row.role === "owner"
           ? `${row.owner_city || row.location}${row.owner_neighborhood ? `, ${row.owner_neighborhood}` : ""}`
           : `${row.location}${row.artist_neighborhood ? `, ${row.artist_neighborhood}` : ""}`,
       bio: row.bio,
       avatar_url: row.role === "owner" ? row.owner_image || row.avatar_url : row.artist_image || row.avatar_url,
-      rating: 0,
+      rating: Math.round((row.avg_rating || 0) * 10) / 10, // Redondear a 1 decimal
+      reviewCount: row.review_count || 0,
       // Campos para Locales
       capacity: row.capacity,
       business_type: row.business_type,

@@ -18,6 +18,17 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       const response = await fetch(`/api/profiles?userId=${params.id}`)
       const data = await response.json()
 
+      // Cargar reseñas reales
+      let reviewsData: any[] = []
+      try {
+        const reviewsRes = await fetch(`/api/reviews?userId=${params.id}`)
+        if (reviewsRes.ok) {
+          reviewsData = await reviewsRes.json()
+        }
+      } catch (e) {
+        console.error("[v0] Error cargando reseñas:", e)
+      }
+
       if (data.specificProfile) {
         // Usar el rol del usuario que viene del API, no del profile
         const userRole = data.role
@@ -55,7 +66,9 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           
           setProfileData({
             businessName: data.specificProfile.business_name,
-            businessType: getBusinessTypeLabel(data.specificProfile.business_type, data.specificProfile.other_business_type),
+            businessType: data.specificProfile.business_type,
+            otherBusinessType: data.specificProfile.other_business_type || "",
+            businessTypeLabel: getBusinessTypeLabel(data.specificProfile.business_type, data.specificProfile.other_business_type),
             city: city,
             neighborhood: cleanNeighborhood,
             address: data.specificProfile.address,
@@ -64,6 +77,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             businessHoursData: data.specificProfile.business_hours_data,
             description: data.specificProfile.description,
             additionalServices: services.length > 0 ? services.join(", ") : (data.specificProfile.additional_services || ""),
+            otherService: data.specificProfile.other_service || "",
             contractPolicies: data.specificProfile.policies,
             profileImage: data.specificProfile.profile_image,
             featuredImage: data.specificProfile.featured_image,
@@ -73,7 +87,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             facebook: data.profile?.facebook || "",
             phone: data.profile?.phone || "",
             otherSocial: data.profile?.other_social || "",
-            reviews: [],
+            reviews: reviewsData,
           })
         } else {
           // Parse portfolio images si existe
@@ -108,7 +122,9 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
           setProfileData({
             artistName: data.specificProfile.stage_name || data.specificProfile.artist_name,
-            category: getCategoryLabel(data.specificProfile.category, data.specificProfile.other_category),
+            category: data.specificProfile.category,
+            otherCategory: data.specificProfile.other_category || "",
+            categoryLabel: getCategoryLabel(data.specificProfile.category, data.specificProfile.other_category),
             city: artistCity,
             neighborhood: artistNeighborhood !== artistCity ? artistNeighborhood : "",
             yearsOfExperience: data.specificProfile.experience_years || data.specificProfile.years_of_experience,
@@ -125,7 +141,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             profileImage: data.specificProfile.profile_image,
             featuredImage: data.specificProfile.featured_image || null,
             portfolioImages: portfolioImages,
-            reviews: [],
+            reviews: reviewsData,
           })
         }
       }

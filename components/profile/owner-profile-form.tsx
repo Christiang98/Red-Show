@@ -33,6 +33,7 @@ interface OwnerProfileData {
   facebook: string
   alternateContact: string
   services: string[]
+  otherService: string
   policies: string
   profileImage: string | null
   featuredImage: string | null
@@ -76,6 +77,7 @@ export function OwnerProfileForm() {
     facebook: "",
     alternateContact: "",
     services: [],
+    otherService: "",
     policies: "",
     profileImage: null,
     featuredImage: null,
@@ -118,6 +120,7 @@ export function OwnerProfileForm() {
           facebook: data.profile?.facebook || "",
           alternateContact: data.profile?.phone || "",
           services: servicesData,
+          otherService: data.specificProfile.other_service || "",
           policies: data.specificProfile.policies || "",
           profileImage: data.specificProfile.profile_image || null,
           featuredImage: data.specificProfile.featured_image || null,
@@ -253,6 +256,7 @@ export function OwnerProfileForm() {
             description: formData.description,
             businessHoursData: JSON.stringify(formData.businessHours),
             services: JSON.stringify(formData.services),
+            otherService: formData.otherService,
             policies: formData.policies,
             profileImage: formData.profileImage,
             featuredImage: formData.featuredImage,
@@ -562,7 +566,37 @@ export function OwnerProfileForm() {
                   </button>
                 )
               })}
+
+              {/* Opción Otro */}
+              <button
+                type="button"
+                onClick={() => handleServiceToggle("__other__")}
+                className={`p-3 rounded-lg border-2 text-sm font-medium transition-all text-left ${
+                  formData.services.includes("__other__")
+                    ? "border-secondary bg-secondary/10 text-secondary"
+                    : "border-border bg-background text-foreground hover:border-secondary/50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {formData.services.includes("__other__") && <Check className="h-4 w-4 flex-shrink-0" />}
+                  <span>Otro</span>
+                </div>
+              </button>
             </div>
+
+            {/* Campo de texto para servicio personalizado */}
+            {formData.services.includes("__other__") && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Especifica el servicio adicional</label>
+                <Input
+                  type="text"
+                  name="otherService"
+                  value={formData.otherService}
+                  onChange={handleInputChange}
+                  placeholder="Ej: Seguridad privada, salón de fumadores..."
+                />
+              </div>
+            )}
           </div>
 
           {/* Politicas de Contratacion */}
@@ -695,33 +729,58 @@ export function OwnerProfileForm() {
             </div>
           </div>
 
-          {/* Publicacion - MEJORADO */}
-          <div className="p-6 bg-gradient-to-r from-secondary/10 to-primary/10 border-2 border-secondary/30 rounded-xl">
-            <div className="flex items-center justify-between gap-4">
+          {/* Publicacion - mayor visibilidad MEJORADO */}
+          <div className={`p-8 rounded-2xl border-3 transition-all duration-300 ${formData.isPublished 
+            ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-500 shadow-2xl shadow-green-500/20' 
+            : 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-400 shadow-xl shadow-amber-500/10'}`}>
+            <div className="flex items-center justify-between gap-6">
               <div className="flex-1">
-                <h4 className="text-lg font-semibold text-foreground mb-1">Publicar mi establecimiento</h4>
-                <p className="text-sm text-muted-foreground">
-                  Al activar esta opcion, tu establecimiento sera visible en las busquedas publicas y podras recibir
-                  solicitudes de contratacion.
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-4 h-4 rounded-full ${formData.isPublished ? 'bg-green-500 animate-pulse shadow-lg shadow-green-500/50' : 'bg-amber-500 animate-pulse shadow-lg shadow-amber-500/50'}`} />
+                  <h4 className={`text-xl font-black ${formData.isPublished ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                    {formData.isPublished ? "✅ Establecimiento Visible Públicamente" : "⚠️ Activar Visibilidad Pública"}
+                  </h4>
+                </div>
+                <p className={`text-sm font-medium ${formData.isPublished ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                  {formData.isPublished 
+                    ? "Tu establecimiento aparece en las búsquedas y puedes recibir solicitudes de contratación." 
+                    : "Activa este interruptor para que tu establecimiento sea visible y recibir oportunidades."}
                 </p>
               </div>
-              <Switch
-                checked={formData.isPublished}
-                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPublished: checked }))}
-                className="scale-125"
-              />
+              <div className="flex flex-col items-center gap-2">
+                <Switch
+                  checked={formData.isPublished}
+                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPublished: checked }))}
+                  className={`scale-[1.8] ${formData.isPublished ? 'data-[state=checked]:bg-green-500' : ''}`}
+                />
+                <span className={`text-xs font-bold ${formData.isPublished ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {formData.isPublished ? 'VISIBLE' : 'OCULTO'}
+                </span>
+              </div>
             </div>
+            {!formData.isPublished && (
+              <div className="mt-6 p-4 bg-amber-100 dark:bg-amber-950/30 border-2 border-amber-400 dark:border-amber-600 rounded-xl flex items-start gap-3 shadow-lg">
+                <span className="text-amber-600 dark:text-amber-400 text-2xl flex-shrink-0">⚠️</span>
+                <div>
+                  <p className="text-sm text-amber-900 dark:text-amber-200 font-bold mb-1">Establecimiento no visible</p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300">Tu establecimiento está oculto. Activa el interruptor arriba para aparecer en búsquedas y recibir contrataciones.</p>
+                </div>
+              </div>
+            )}
             {formData.isPublished && (
-              <div className="mt-4 flex items-center gap-2 text-success">
-                <Check className="h-5 w-5" />
-                <span className="text-sm font-medium">Tu perfil sera visible para todos los usuarios</span>
+              <div className="mt-6 p-4 bg-green-50 dark:bg-green-950/30 border-2 border-green-400 dark:border-green-600 rounded-xl flex items-center gap-3 shadow-lg">
+                <Check className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-green-900 dark:text-green-200 mb-1">¡Establecimiento activo!</p>
+                  <p className="text-xs text-green-800 dark:text-green-300">Tu establecimiento es visible para todos los usuarios de Red Show.</p>
+                </div>
               </div>
             )}
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-lg"
+            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground h-14 text-lg font-bold shadow-lg shadow-primary/20 rounded-xl transition-all hover:shadow-xl hover:shadow-primary/30"
             disabled={loading}
           >
             {loading ? "Guardando..." : "Guardar Perfil"}

@@ -57,11 +57,15 @@ export default function MessagingPage() {
       if (!existing) {
         acc.push({
           id: otherUserId.toString(),
-          name: `Usuario ${otherUserId}`,
+          name: msg.sender_id === user.id 
+            ? (msg.receiver_name || `Usuario ${otherUserId}`)
+            : (msg.sender_name || `Usuario ${otherUserId}`),
           lastMessage: msg.content,
           timestamp: new Date(msg.created_at),
           unread: !msg.read && msg.receiver_id === user.id,
-          avatar: "/placeholder.svg?height=40&width=40",
+          avatar: msg.sender_id === user.id 
+            ? (msg.receiver_avatar || "/placeholder.svg?height=40&width=40")
+            : (msg.sender_avatar || "/placeholder.svg?height=40&width=40"),
         })
       }
       return acc
