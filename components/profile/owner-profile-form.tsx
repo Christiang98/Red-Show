@@ -320,23 +320,61 @@ export function OwnerProfileForm() {
                   name="businessType"
                   value={formData.businessType}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                  className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground appearance-none cursor-pointer hover:border-primary/50 transition-colors"
+                  style={{ 
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem'
+                  }}
                   required
                 >
                   <option value="">Selecciona un tipo</option>
-                  <option value="salon">Salon de Eventos</option>
-                  <option value="bar">Bar</option>
-                  <option value="restaurant">Restaurante</option>
-                  <option value="cultural">Centro Cultural</option>
-                  <option value="theater">Teatro</option>
-                  <option value="club">Club/Discoteca</option>
-                  <option value="hotel">Hotel/Salon de Hotel</option>
-                  <option value="other">Otro</option>
+                  
+                  {/* Espacios para eventos */}
+                  <option value="salon">🏛️ Salón de Eventos</option>
+                  <option value="quinta">🏡 Quinta/Salón de Fiestas</option>
+                  <option value="jardin">🌳 Jardín para Eventos</option>
+                  <option value="terraza">🌆 Terraza/Rooftop</option>
+                  <option value="estancia">🏰 Estancia/Casona</option>
+                  
+                  {/* Gastronomía */}
+                  <option value="restaurant">🍽️ Restaurante</option>
+                  <option value="bar">🍺 Bar</option>
+                  <option value="pub">🍻 Pub/Cervecería</option>
+                  <option value="cafe">☕ Café/Cafetería</option>
+                  <option value="bistro">🥐 Bistró</option>
+                  <option value="parrilla">🥩 Parrilla/Asador</option>
+                  
+                  {/* Entretenimiento */}
+                  <option value="club">🎵 Club/Discoteca</option>
+                  <option value="teatro">🎭 Teatro</option>
+                  <option value="cultural">🎨 Centro Cultural</option>
+                  <option value="galeria">🖼️ Galería de Arte</option>
+                  <option value="cine">🎬 Cine/Auditorio</option>
+                  
+                  {/* Alojamiento */}
+                  <option value="hotel">🏨 Hotel</option>
+                  <option value="salon-hotel">🏩 Salón de Hotel</option>
+                  <option value="hostel">🛏️ Hostel</option>
+                  
+                  {/* Deportivo/Recreativo */}
+                  <option value="club-deportivo">⚽ Club Deportivo</option>
+                  <option value="espacio-aire-libre">🏕️ Espacio al Aire Libre</option>
+                  <option value="estadio">🏟️ Estadio/Arena</option>
+                  
+                  {/* Otros */}
+                  <option value="museo">🏺 Museo</option>
+                  <option value="biblioteca">📚 Biblioteca</option>
+                  <option value="coworking">💼 Espacio de Coworking</option>
+                  <option value="bodega">🏭 Bodega/Galpón para Eventos</option>
+                  <option value="otro">➕ Otro</option>
                 </select>
               </div>
             </div>
 
-            {formData.businessType === "other" && (
+            {formData.businessType === "otro" && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Especifica el tipo de negocio</label>
                 <Input
@@ -344,7 +382,7 @@ export function OwnerProfileForm() {
                   name="otherBusinessType"
                   value={formData.otherBusinessType}
                   onChange={handleInputChange}
-                  placeholder="Ej: Espacio al aire libre"
+                  placeholder="Ej: Barco para eventos, Centro de convenciones, etc."
                 />
               </div>
             )}

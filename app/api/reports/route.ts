@@ -11,6 +11,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Todos los campos son requeridos" }, { status: 400 })
     }
 
+    // Prevenir auto-reporte
+    if (String(reporterId) === String(reportedUserId)) {
+      return NextResponse.json({ error: "No podés reportarte a vos mismo" }, { status: 400 })
+    }
+
     console.log("[v0] Creando reporte de usuario:", reporterId, "contra:", reportedUserId)
 
     const result = await runQuery(

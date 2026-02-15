@@ -53,28 +53,32 @@ export default function DashboardPage() {
       description: user.role === "owner" ? "Encuentra artistas para tu espacio" : "Explora espacios y eventos",
       href: "/search",
       icon: Users,
-      color: "bg-blue-50 border-blue-200",
+      color: "bg-blue-500/20 border-blue-400/30 hover:bg-blue-500/30",
+      iconColor: "text-blue-400",
     },
     {
       title: "Gestionar Contrataciones",
       description: "Ve solicitudes recibidas y enviadas",
       href: "/bookings",
       icon: BookOpen,
-      color: "bg-green-50 border-green-200",
+      color: "bg-green-500/20 border-green-400/30 hover:bg-green-500/30",
+      iconColor: "text-green-400",
     },
     {
       title: "Mensajes",
       description: "Comunícate con otros usuarios",
       href: "/messaging",
       icon: MessageSquare,
-      color: "bg-purple-50 border-purple-200",
+      color: "bg-purple-500/20 border-purple-400/30 hover:bg-purple-500/30",
+      iconColor: "text-purple-400",
     },
     {
       title: "Tu Perfil",
       description: user.role === "owner" ? "Ve y edita tu información de negocio" : "Ve y actualiza tu portafolio",
       href: "/my-profile",
       icon: BarChart3,
-      color: "bg-orange-50 border-orange-200",
+      color: "bg-orange-500/20 border-orange-400/30 hover:bg-orange-500/30",
+      iconColor: "text-orange-400",
     },
   ]
 
@@ -96,12 +100,12 @@ export default function DashboardPage() {
           {stats.map((stat, idx) => {
             const Icon = stat.icon
             const colors = [
-              "bg-primary/10 border-primary/20",
-              "bg-green-50 border-green-200",
-              "bg-secondary/10 border-secondary/20",
-              "bg-orange-50 border-orange-200",
+              "bg-primary/20 border-primary/30",
+              "bg-green-500/20 border-green-400/30",
+              "bg-secondary/20 border-secondary/30",
+              "bg-orange-500/20 border-orange-400/30",
             ]
-            const iconColors = ["text-primary", "text-green-600", "text-secondary", "text-orange-600"]
+            const iconColors = ["text-primary", "text-green-400", "text-secondary", "text-orange-400"]
             return (
               <Card key={idx} className={`p-6 hover:shadow-lg transition border-2 ${colors[idx]}`}>
                 <div className="flex items-center justify-between">
@@ -127,14 +131,14 @@ export default function DashboardPage() {
               return (
                 <Link key={idx} href={action.href}>
                   <Card
-                    className={`p-6 ${action.color} border-2 hover:shadow-lg hover:border-primary/50 transition cursor-pointer h-full`}
+                    className={`p-6 ${action.color} border-2 hover:shadow-lg transition cursor-pointer h-full`}
                   >
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-semibold text-lg text-foreground">{action.title}</h3>
                         <p className="text-sm text-muted-foreground mt-1">{action.description}</p>
                       </div>
-                      <Icon className="text-primary opacity-60" size={28} />
+                      <Icon className={action.iconColor} size={28} />
                     </div>
                   </Card>
                 </Link>

@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={poppins.variable}>
-      <body className="font-sans antialiased bg-background">
+      <body className="font-sans antialiased" style={{ background: "linear-gradient(160deg, #080b14 0%, #0d0817 50%, #080b14 100%)", minHeight: "100vh", color: "#FFFCF2" }}>
         <main className="min-h-screen">{children}</main>
         <Toaster />
         <Analytics />

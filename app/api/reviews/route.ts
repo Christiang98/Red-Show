@@ -41,6 +41,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 })
     }
 
+    // Prevenir auto-reseña
+    if (String(reviewerId) === String(reviewedUserId)) {
+      return NextResponse.json({ error: "No podés dejarte una reseña a vos mismo" }, { status: 400 })
+    }
+
     if (rating < 1 || rating > 5) {
       return NextResponse.json({ error: "La calificación debe ser entre 1 y 5" }, { status: 400 })
     }

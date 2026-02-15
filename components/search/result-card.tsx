@@ -76,8 +76,8 @@ export function ResultCard({
   
   // Mostrar otherBusinessType o otherCategory si aplica
   const displayCategory = isOwner
-    ? (businessType === "other" ? (otherBusinessType || "Otro") : businessType)
-    : (category === "other" ? (otherCategory || "Otro") : category)
+    ? (businessType === "otro" ? (otherBusinessType || "Otro") : businessType)
+    : (category === "otro" ? (otherCategory || "Otro") : category)
   
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group border-border/50 hover:border-primary/20 bg-card">

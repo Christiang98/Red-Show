@@ -298,32 +298,64 @@ export function ArtistProfileForm() {
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                  className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground appearance-none cursor-pointer hover:border-primary/50 transition-colors"
+                  style={{ 
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem'
+                  }}
                   required
                 >
-                  <option value="">Selecciona una categoria</option>
-                  <option value="musician">Musico</option>
-                  <option value="band">Banda</option>
-                  <option value="dj">DJ</option>
-                  <option value="comedian">Comediante</option>
-                  <option value="photographer">Fotografo</option>
-                  <option value="videographer">Videografo</option>
-                  <option value="gastronomy">Gastronomico/Catering</option>
-                  <option value="decorator">Decorador</option>
-                  <option value="other">Otro</option>
+                  <option value="">Selecciona una categoría</option>
+                  
+                  {/* Música */}
+                  <option value="musico">🎵 Músico Solista</option>
+                  <option value="banda">🎸 Banda Musical</option>
+                  <option value="dj">🎧 DJ</option>
+                  <option value="cantante">🎤 Cantante</option>
+                  <option value="orquesta">🎻 Orquesta</option>
+                  <option value="mariachi">🎺 Mariachi</option>
+                  
+                  {/* Entretenimiento */}
+                  <option value="comediante">😄 Comediante</option>
+                  <option value="mago">🎩 Mago/Ilusionista</option>
+                  <option value="animador">🎉 Animador de Eventos</option>
+                  <option value="payaso">🤡 Payaso Infantil</option>
+                  <option value="mimo">🎭 Mimo/Performer</option>
+                  <option value="bailarin">💃 Bailarín/Coreógrafo</option>
+                  
+                  {/* Visual */}
+                  <option value="fotografo">📷 Fotógrafo</option>
+                  <option value="videografo">🎥 Videógrafo</option>
+                  <option value="drone">🚁 Operador de Drone</option>
+                  
+                  {/* Servicios */}
+                  <option value="gastronomia">🍽️ Gastronómico/Catering</option>
+                  <option value="bartender">🍸 Bartender/Coctelería</option>
+                  <option value="decorador">🎨 Decorador de Eventos</option>
+                  <option value="florista">🌸 Florista/Arreglos Florales</option>
+                  <option value="maquillador">💄 Maquillador Profesional</option>
+                  <option value="peluquero">💇 Peluquero/Estilista</option>
+                  <option value="productor">🎬 Productor de Eventos</option>
+                  <option value="sonido">🔊 Técnico de Sonido/Luces</option>
+                  
+                  {/* Otros */}
+                  <option value="otro">➕ Otro</option>
                 </select>
               </div>
             </div>
 
-            {formData.category === "other" && (
+            {formData.category === "otro" && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Especifica tu categoria</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Especifica tu categoría</label>
                 <Input
                   type="text"
                   name="otherCategory"
                   value={formData.otherCategory}
                   onChange={handleInputChange}
-                  placeholder="Ej: Maquillador profesional"
+                  placeholder="Ej: Actor de teatro, Artista circense, etc."
                 />
               </div>
             )}

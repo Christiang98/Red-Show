@@ -121,7 +121,8 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
   useEffect(() => {
     const user = getCurrentUser()
     setCurrentUser(user)
-    const isOwn = user && user.id === userId
+    // Comparar como string para evitar problemas number vs string
+    const isOwn = !!(user && String(user.id) === String(userId))
     setIsOwnProfile(isOwn)
     setLocalReviews(data.reviews || [])
     if (user && user.id !== userId) {
@@ -134,12 +135,18 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
       const response = await fetch(`/api/bookings?userId=${currentUserId}`)
       const bookings = await response.json()
       const existingBooking = bookings.find((b: any) => {
-        const isRequester = b.artist_id === currentUserId || b.owner_id === currentUserId
-        const isReceiver = b.artist_id === parseInt(userId) || b.owner_id === parseInt(userId)
+        const isRequester = String(b.artist_id) === String(currentUserId) || String(b.owner_id) === String(currentUserId)
+        const isReceiver  = String(b.artist_id) === String(userId) || String(b.owner_id) === String(userId)
         return isRequester && isReceiver
       })
       if (existingBooking) {
-        setHiringStatus(existingBooking.status === "accepted" ? "accepted" : "pending")
+        const confirmedStatuses = ["confirmed", "accepted"]
+        const activeStatuses    = ["pending", "matched"]
+        if (confirmedStatuses.includes(existingBooking.status)) {
+          setHiringStatus("accepted")
+        } else if (activeStatuses.includes(existingBooking.status)) {
+          setHiringStatus("pending")
+        }
         setExistingBookingId(existingBooking.id.toString())
       }
     } catch { /* silent */ }
@@ -266,7 +273,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
           <Button onClick={openHiringModal} className="w-full h-12 font-bold text-base border-0 shadow-lg shadow-purple-900/30"
             style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
             <Send className="h-4 w-4 mr-2" />
-            Solicitar Contratación
+            Enviar Propuesta
           </Button>
         )}
         {hiringStatus === "loading" && (
@@ -275,9 +282,9 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
           </Button>
         )}
         {hiringStatus === "pending" && (
-          <Button disabled className="w-full h-12 font-bold bg-green-500/20 border border-green-500/30 text-green-400">
-            <Check className="h-4 w-4 mr-2" />
-            Solicitud Enviada
+          <Button disabled className="w-full h-12 font-bold bg-blue-500/20 border border-blue-500/30 text-blue-300">
+            <Clock className="h-4 w-4 mr-2" />
+            Propuesta enviada
           </Button>
         )}
         {hiringStatus === "accepted" && (
@@ -288,11 +295,13 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
           </Button>
         )}
         <div className="border-t border-white/10 my-1" />
+        {currentUser && (
         <Button onClick={handleReportUser} variant="outline"
           className="w-full h-10 font-semibold border border-red-500/40 bg-red-500/5 text-red-400 hover:bg-red-500/15 hover:border-red-500/60 hover:text-red-300 transition-all">
           <Flag className="h-4 w-4 mr-2" />
           Reportar Usuario
         </Button>
+        )}
       </div>
     )
   }
@@ -735,9 +744,9 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
         <DialogContent className="sm:max-w-md border border-white/10 text-white"
           style={{ background: "linear-gradient(135deg, #0d1022 0%, #080b14 100%)" }}>
           <DialogHeader>
-            <DialogTitle className="text-xl font-black text-white">Solicitar Contratación</DialogTitle>
+            <DialogTitle className="text-xl font-black text-white">Enviar Propuesta de Contratación</DialogTitle>
             <DialogDescription className="text-white/45">
-              Envía una solicitud a {data.businessName || data.artistName}
+              Enviá una propuesta a {data.businessName || data.artistName}. Si es aceptada, el local deberá confirmar abonando la tarifa de gestión (USD 3).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -783,7 +792,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
             <Button onClick={handleSendHiringRequest} className="flex-1 font-bold border-0"
               style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
               <Send className="h-4 w-4 mr-2" />
-              Enviar Solicitud
+              Enviar Propuesta
             </Button>
           </div>
         </DialogContent>

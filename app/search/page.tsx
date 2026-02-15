@@ -79,39 +79,57 @@ export default function SearchPage() {
         return (
           result.category?.toLowerCase().includes("dj") ||
           result.category?.toLowerCase().includes("banda") ||
-          result.category?.toLowerCase().includes("musician") ||
+          result.category?.toLowerCase().includes("band") ||
+          result.category?.toLowerCase().includes("musico") ||
           result.category?.toLowerCase().includes("música") ||
-          result.category?.toLowerCase().includes("musico")
+          result.category?.toLowerCase().includes("musician") ||
+          result.category?.toLowerCase().includes("cantante") ||
+          result.category?.toLowerCase().includes("orquesta") ||
+          result.category?.toLowerCase().includes("mariachi")
         )
       }
 
       if (filters.serviceCategory === "photography") {
         return (
-          result.category?.toLowerCase().includes("photograph") || 
+          result.category?.toLowerCase().includes("fotografo") || 
           result.category?.toLowerCase().includes("fotograf") ||
+          result.category?.toLowerCase().includes("videografo") ||
+          result.category?.toLowerCase().includes("videograf") ||
+          result.category?.toLowerCase().includes("photograph") || 
           result.category?.toLowerCase().includes("videograph") ||
-          result.category?.toLowerCase().includes("videograf")
+          result.category?.toLowerCase().includes("drone")
         )
       }
 
       if (filters.serviceCategory === "catering") {
         return (
+          result.category?.toLowerCase().includes("gastronomia") || 
           result.category?.toLowerCase().includes("gastronom") || 
-          result.category?.toLowerCase().includes("catering")
+          result.category?.toLowerCase().includes("catering") ||
+          result.category?.toLowerCase().includes("bartender") ||
+          result.category?.toLowerCase().includes("coctel")
         )
       }
 
       if (filters.serviceCategory === "decoration") {
         return (
+          result.category?.toLowerCase().includes("decorador") || 
           result.category?.toLowerCase().includes("decorad") || 
-          result.category?.toLowerCase().includes("decorat")
+          result.category?.toLowerCase().includes("decorat") ||
+          result.category?.toLowerCase().includes("florista") ||
+          result.category?.toLowerCase().includes("flor")
         )
       }
 
       if (filters.serviceCategory === "comedy") {
         return (
-          result.category?.toLowerCase().includes("comedian") || 
-          result.category?.toLowerCase().includes("comedia")
+          result.category?.toLowerCase().includes("comediante") || 
+          result.category?.toLowerCase().includes("comedia") ||
+          result.category?.toLowerCase().includes("comedian") ||
+          result.category?.toLowerCase().includes("mago") ||
+          result.category?.toLowerCase().includes("animador") ||
+          result.category?.toLowerCase().includes("payaso") ||
+          result.category?.toLowerCase().includes("mimo")
         )
       }
 

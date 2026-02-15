@@ -1,32 +1,38 @@
 "use client"
 
 import { useState } from "react"
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Check, X, MessageSquare, Calendar, DollarSign, User, Loader2 } from "lucide-react"
+import {
+  Check, X, MessageSquare, Calendar, User, Loader2,
+  Clock, AlertCircle, CreditCard, Star, Trophy,
+  ChevronDown, ChevronUp, Lock, Unlock, ShieldCheck,
+} from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { getCurrentUser } from "@/lib/auth"
+import { PaymentModal } from "./payment-modal"
 
+// ── Tipos ────────────────────────────────────────────────────────────────────
 interface Booking {
   id: string | number
   artist_id?: number
   owner_id?: number
   title?: string
-  vendorName?: string
-  date?: string
   booking_date?: string
-  time?: string
-  status: "pending" | "accepted" | "rejected" | "completed"
-  serviceType?: string
+  date?: string
+  status: string
   description?: string
-  guestCount?: number
   message?: string
-  clientName?: string
   price?: number
   sender_name?: string
   sender_image?: string
   sender_role?: string
+  commission_paid?: boolean | number
+  confirmed_at?: string
+  payment_method?: string
+  payment_reference?: string
+  artist_name?: string
+  owner_name?: string
 }
 
 interface BookingListProps {
@@ -35,323 +41,399 @@ interface BookingListProps {
   onUpdateStatus?: (bookingId: string, status: string) => void
 }
 
+// ── Config de estados ────────────────────────────────────────────────────────
+const STATUS: Record<string, { label: string; pill: string; icon: React.ReactNode }> = {
+  pending: {
+    label: "Pendiente",
+    pill: "text-yellow-300 bg-yellow-500/20 border-yellow-500/40",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  matched: {
+    label: "Pendiente de confirmación",
+    pill: "text-blue-300 bg-blue-500/20 border-blue-500/40",
+    icon: <AlertCircle className="h-3 w-3" />,
+  },
+  confirmed: {
+    label: "Contratación confirmada",
+    pill: "text-green-300 bg-green-500/20 border-green-500/40",
+    icon: <Unlock className="h-3 w-3" />,
+  },
+  accepted: {
+    label: "Contratación confirmada",
+    pill: "text-green-300 bg-green-500/20 border-green-500/40",
+    icon: <Check className="h-3 w-3" />,
+  },
+  rejected: {
+    label: "Rechazada",
+    pill: "text-red-300 bg-red-500/20 border-red-500/40",
+    icon: <X className="h-3 w-3" />,
+  },
+  completed: {
+    label: "Evento realizado",
+    pill: "text-purple-300 bg-purple-500/20 border-purple-500/40",
+    icon: <Trophy className="h-3 w-3" />,
+  },
+  cancelled: {
+    label: "Cancelada",
+    pill: "text-white/50 bg-white/10 border-white/20",
+    icon: <X className="h-3 w-3" />,
+  },
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────
 export function BookingList({ bookings, isReceived = false, onUpdateStatus }: BookingListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
-  const router = useRouter()
+  const [loadingId, setLoadingId]   = useState<string | null>(null)
+  const [payingId, setPayingId]     = useState<string | null>(null)
+  const router    = useRouter()
   const { toast } = useToast()
+  const me       = getCurrentUser()
+  const amIOwner = me?.role === "owner"
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return "bg-success/10 text-success border-success/30"
-      case "rejected":
-        return "bg-destructive/10 text-destructive border-destructive/30"
-      case "completed":
-        return "bg-blue-500/10 text-blue-700 border-blue-500/30"
-      default:
-        return "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
-    }
+  const otherUserId = (b: Booking) => {
+    if (isReceived) return b.sender_role === "artist" ? b.artist_id : b.owner_id
+    else            return b.sender_role === "artist" ? b.owner_id  : b.artist_id
   }
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return "Aceptada"
-      case "rejected":
-        return "Rechazada"
-      case "completed":
-        return "Completada"
-      default:
-        return "Pendiente"
-    }
-  }
+  const goChat    = (b: Booking) => router.push(`/messaging?userId=${otherUserId(b)}`)
+  const goProfile = (b: Booking) => router.push(`/profile/${otherUserId(b)}`)
 
-  const formatBooking = (booking: Booking) => {
-    return {
-      id: booking.id,
-      name: booking.title || booking.vendorName || "Sin titulo",
-      date: booking.booking_date || booking.date || "",
-      description: booking.description || booking.message || "",
-      price: booking.price,
-    }
-  }
-
-  const handleAccept = async (bookingId: string) => {
-    setLoadingId(bookingId)
+  const patchBooking = async (id: string, payload: object, successMsg: string) => {
+    setLoadingId(id)
     try {
-      if (onUpdateStatus) {
-        await onUpdateStatus(bookingId, "accepted")
-        toast({
-          title: "Contratacion aceptada",
-          description: "Se ha habilitado la mensajeria con el solicitante",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo aceptar la contratacion",
-        variant: "destructive",
+      const res  = await fetch(`/api/bookings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Error al actualizar")
+      if (onUpdateStatus) await onUpdateStatus(id, data.status || "")
+      toast({ title: successMsg })
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" })
     } finally {
       setLoadingId(null)
     }
   }
 
-  const handleReject = async (bookingId: string) => {
-    setLoadingId(bookingId)
-    try {
-      if (onUpdateStatus) {
-        await onUpdateStatus(bookingId, "rejected")
-        toast({
-          title: "Contratacion rechazada",
-          description: "La solicitud ha sido rechazada",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo rechazar la contratacion",
-        variant: "destructive",
-      })
-    } finally {
-      setLoadingId(null)
-    }
-  }
+  const handleAccept    = (id: string) =>
+    patchBooking(id, { status: "matched" },
+      "Propuesta aceptada — el local debe confirmar y pagar para finalizar")
+  const handleReject    = (id: string) =>
+    patchBooking(id, { status: "rejected" }, "Propuesta rechazada")
+  const handleComplete  = (id: string) =>
+    patchBooking(id, { status: "completed" }, "Evento marcado como realizado ✓")
 
-  const handleSendMessage = (booking: Booking) => {
-    // Determinar el ID del otro usuario
-    let targetUserId: number | undefined
-    
-    if (isReceived) {
-      // Si recibo la solicitud, quiero chatear con quien la envio
-      if (booking.sender_role === "artist") {
-        targetUserId = booking.artist_id
-      } else {
-        targetUserId = booking.owner_id
-      }
-    } else {
-      // Si envie la solicitud, quiero chatear con quien la recibio
-      if (booking.sender_role === "artist") {
-        targetUserId = booking.owner_id
-      } else {
-        targetUserId = booking.artist_id
-      }
-    }
-    
-    router.push(`/messaging?userId=${targetUserId}`)
-  }
-
-  const handleViewProfile = (booking: Booking) => {
-    let profileUserId: number | undefined
-    
-    if (isReceived) {
-      // Ver perfil de quien envio
-      if (booking.sender_role === "artist") {
-        profileUserId = booking.artist_id
-      } else {
-        profileUserId = booking.owner_id
-      }
-    } else {
-      // Ver perfil de quien recibio
-      if (booking.sender_role === "artist") {
-        profileUserId = booking.owner_id
-      } else {
-        profileUserId = booking.artist_id
-      }
-    }
-    
-    router.push(`/profile/${profileUserId}`)
+  // ── Render ─────────────────────────────────────────────────────────────────
+  if (bookings.length === 0) {
+    return (
+      <div className="text-center py-14 rounded-2xl"
+           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <Calendar className="w-9 h-9 mx-auto mb-3" style={{ color: "rgba(255,255,255,0.2)" }} />
+        <p style={{ color: "rgba(255,255,255,0.4)" }} className="text-sm">
+          {isReceived ? "Todavía no recibiste propuestas" : "Todavía no enviaste propuestas"}
+        </p>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      {bookings.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">
-            {isReceived ? "No hay solicitudes recibidas aun" : "No tienes solicitudes"}
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {bookings.map((booking) => {
-            const formatted = formatBooking(booking)
-            const isLoading = loadingId === formatted.id.toString()
-            
-            return (
-              <Card key={formatted.id} className="p-4 hover:shadow-md transition">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-semibold text-foreground truncate">{formatted.name}</h4>
-                      <Badge className={`${getStatusColor(booking.status)} border`}>
-                        {getStatusLabel(booking.status)}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                      {formatted.date && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(formatted.date).toLocaleDateString("es-AR")}
-                        </div>
-                      )}
-                      {formatted.price && (
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          ${formatted.price.toLocaleString()}
-                        </div>
-                      )}
-                      {booking.sender_name && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          {booking.sender_name}
-                        </div>
-                      )}
-                    </div>
+    <>
+      {/* Modal de pago */}
+      {payingId && (() => {
+        const b = bookings.find(x => x.id.toString() === payingId)!
+        return (
+          <PaymentModal
+            bookingId={payingId}
+            bookingTitle={b.title || "Contratación"}
+            artistName={b.artist_name || b.sender_name || "Artista"}
+            bookingDate={b.booking_date || b.date}
+            onSuccess={() => onUpdateStatus?.(payingId, "confirmed")}
+            onClose={() => setPayingId(null)}
+          />
+        )
+      })()}
+
+      <div className="space-y-3">
+        {bookings.map((booking) => {
+          const id       = booking.id.toString()
+          const expanded = expandedId === id
+          const loading  = loadingId  === id
+          const cfg      = STATUS[booking.status] ?? STATUS.pending
+          const displayDate = booking.booking_date || booking.date
+
+          return (
+            <div key={id} className="rounded-2xl overflow-hidden transition-all duration-200"
+                 style={{
+                   background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)",
+                   backdropFilter: "blur(12px)",
+                   border: "1px solid rgba(255,255,255,0.12)",
+                   boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
+                 }}>
+
+              {/* ── Cabecera ─────────────────────────────────────────── */}
+              <div className="flex items-start justify-between gap-4 p-5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h4 className="font-bold text-white truncate">{booking.title || "Sin título"}</h4>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${cfg.pill}`}>
+                      {cfg.icon}
+                      {cfg.label}
+                    </span>
                   </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-transparent"
-                    onClick={() =>
-                      setExpandedId(expandedId === formatted.id.toString() ? null : formatted.id.toString())
-                    }
-                  >
-                    {expandedId === formatted.id.toString() ? "Ver menos" : "Ver mas"}
-                  </Button>
-                </div>
-
-                {expandedId === formatted.id.toString() && (
-                  <div className="mt-4 pt-4 border-t border-border space-y-4">
-                    {/* Info del remitente */}
+                  <div className="flex flex-wrap gap-4 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {displayDate && (
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {new Date(displayDate).toLocaleDateString("es-AR",
+                          { day: "2-digit", month: "long", year: "numeric" })}
+                      </span>
+                    )}
                     {booking.sender_name && (
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          {booking.sender_image ? (
-                            <img 
-                              src={booking.sender_image || "/placeholder.svg"} 
-                              alt={booking.sender_name}
-                              className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
-                              {booking.sender_name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-xs text-gray-500">Solicitud de:</p>
-                            <p className="font-semibold text-gray-900">{booking.sender_name}</p>
-                            {booking.sender_role && (
-                              <span className="text-xs text-gray-500 capitalize">
-                                {booking.sender_role === "artist" ? "Artista/Emprendedor" : "Dueño de Local"}
-                              </span>
-                            )}
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5" />
+                        {booking.sender_name}
+                      </span>
+                    )}
+                    {booking.payment_reference && (
+                      <span className="flex items-center gap-1.5 text-green-400/70">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        {booking.payment_reference}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setExpandedId(expanded ? null : id)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all flex-shrink-0"
+                  style={{
+                    color: "rgba(255,255,255,0.6)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.05)",
+                  }}>
+                  {expanded ? <><ChevronUp size={13}/>Menos</> : <><ChevronDown size={13}/>Ver más</>}
+                </button>
+              </div>
+
+              {/* ── Panel expandido ───────────────────────────────────── */}
+              {expanded && (
+                <div className="px-5 pb-5 space-y-4"
+                     style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="pt-4" />
+
+                  {/* Info remitente */}
+                  {booking.sender_name && (
+                    <div className="flex items-center justify-between p-3 rounded-xl"
+                         style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <div className="flex items-center gap-3">
+                        {booking.sender_image ? (
+                          <img src={booking.sender_image} alt={booking.sender_name}
+                            className="w-10 h-10 rounded-full object-cover" style={{ border: "2px solid rgba(255,255,255,0.2)" }} />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                            style={{ background: "linear-gradient(135deg,#001C55,#B744B8)" }}>
+                            {booking.sender_name.charAt(0).toUpperCase()}
                           </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-transparent"
-                          onClick={() => handleViewProfile(booking)}
-                        >
-                          Ver perfil
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Mensaje del solicitante */}
-                    {booking.message && (
-                      <div>
-                        <p className="text-sm font-medium text-foreground mb-1">Mensaje:</p>
-                        <p className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-100 italic">
-                          "{booking.message}"
-                        </p>
-                      </div>
-                    )}
-
-                    {formatted.description && !booking.message && (
-                      <div>
-                        <p className="text-sm font-medium text-foreground mb-1">Descripcion:</p>
-                        <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded">{formatted.description}</p>
-                      </div>
-                    )}
-
-                    {/* Acciones para solicitudes recibidas pendientes */}
-                    {isReceived && booking.status === "pending" && onUpdateStatus && (
-                      <div>
-                        <div className="mb-3 p-3 bg-secondary/10 border border-secondary/30 rounded-lg">
-                          <p className="text-sm text-foreground">
-                            <strong>Importante:</strong> Al aceptar esta contratacion, se habilitara la mensajeria con
-                            la otra parte para que puedan coordinar todos los detalles.
+                        )}
+                        <div>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Propuesta de:</p>
+                          <p className="font-semibold text-white text-sm">{booking.sender_name}</p>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                            {booking.sender_role === "artist" ? "Artista / Emprendedor" : "Dueño de Local"}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            className="flex-1 bg-success hover:bg-success/90"
-                            onClick={() => handleAccept(formatted.id.toString())}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Check className="h-4 w-4 mr-2" />
-                            )}
-                            Aceptar Contratacion
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="flex-1 border-destructive text-destructive hover:bg-destructive/10 bg-transparent"
-                            onClick={() => handleReject(formatted.id.toString())}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4 mr-2" />
-                            )}
-                            Rechazar
-                          </Button>
-                        </div>
                       </div>
-                    )}
+                      <button onClick={() => goProfile(booking)}
+                        className="text-xs font-semibold transition-all px-3 py-1.5 rounded-lg"
+                        style={{ color: "#c084fc", border: "1px solid rgba(183,68,184,0.3)", background: "rgba(183,68,184,0.1)" }}>
+                        Ver perfil
+                      </button>
+                    </div>
+                  )}
 
-                    {/* Acciones para solicitudes aceptadas */}
-                    {booking.status === "accepted" && (
-                      <div className="p-4 bg-success/10 border border-success/30 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3 text-success">
-                          <Check className="h-5 w-5" />
-                          <span className="font-semibold">Contratacion aceptada</span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Ya puedes comunicarte para coordinar los detalles del evento.
+                  {/* Mensaje */}
+                  {booking.message && (
+                    <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>Mensaje</p>
+                      <p className="text-sm italic" style={{ color: "rgba(255,255,255,0.7)" }}>"{booking.message}"</p>
+                    </div>
+                  )}
+
+                  {/* ━━━ PENDING: receptor acepta o rechaza ━━━━━━━━━━━━━━━━━ */}
+                  {isReceived && booking.status === "pending" && (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl" style={{ background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.25)" }}>
+                        <p className="font-semibold text-yellow-300 text-sm mb-1">Propuesta recibida</p>
+                        <p className="text-xs" style={{ color: "rgba(253,224,71,0.65)" }}>
+                          Si aceptás, el local deberá abonar la tarifa de gestión (USD 3) para confirmar definitivamente.
+                          Los datos de contacto se revelan una vez confirmado.
                         </p>
-                        <Button
-                          onClick={() => handleSendMessage(booking)}
-                          className="w-full bg-primary hover:bg-primary/90"
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Abrir Chat
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={() => handleAccept(id)} disabled={loading}
+                          className="flex-1 h-11 font-bold border-0"
+                          style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)" }}>
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Check className="h-4 w-4 mr-1.5"/>}
+                          Aceptar propuesta
+                        </Button>
+                        <Button onClick={() => handleReject(id)} disabled={loading} variant="outline"
+                          className="flex-1 h-11 font-bold bg-transparent"
+                          style={{ border: "1px solid rgba(239,68,68,0.4)", color: "#f87171" }}>
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin"/> : <X className="h-4 w-4 mr-1.5"/>}
+                          Rechazar
                         </Button>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Info para solicitudes rechazadas */}
-                    {booking.status === "rejected" && (
-                      <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                        <div className="flex items-center gap-2 text-destructive">
-                          <X className="h-5 w-5" />
-                          <span className="font-medium">Contratacion rechazada</span>
+                  {/* Cancelar propia propuesta pendiente */}
+                  {!isReceived && booking.status === "pending" && (
+                    <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        Esperando respuesta del receptor.
+                      </p>
+                      <Button onClick={() => handleReject(id)} disabled={loading} variant="outline" size="sm"
+                        className="w-full bg-transparent"
+                        style={{ border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
+                        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1"/> : <X className="h-3.5 w-3.5 mr-1.5"/>}
+                        Cancelar propuesta
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* ━━━ MATCHED: el local paga ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                  {booking.status === "matched" && (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)" }}>
+                        <div className="flex items-start gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5"/>
+                          <div>
+                            <p className="text-blue-300 font-semibold text-sm">Propuesta aceptada — acción requerida</p>
+                            <p className="text-xs mt-1" style={{ color: "rgba(147,197,253,0.65)" }}>
+                              Para confirmar la contratación y bloquear definitivamente la fecha, el Local debe abonar
+                              la tarifa de gestión de <strong className="text-blue-300">USD 3</strong>.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs mt-2 pt-2"
+                             style={{ borderTop: "1px solid rgba(59,130,246,0.15)", color: "rgba(255,255,255,0.35)" }}>
+                          <Lock className="h-3 w-3"/>
+                          Los datos de contacto se revelan una vez confirmada la contratación.
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-              </Card>
-            )
-          })}
-        </div>
-      )}
-    </div>
+
+                      {amIOwner ? (
+                        <Button onClick={() => setPayingId(id)}
+                          className="w-full h-12 font-bold border-0"
+                          style={{ background: "linear-gradient(135deg,#B744B8,#7a1a8a)", boxShadow: "0 4px 20px rgba(183,68,184,0.35)" }}>
+                          <CreditCard className="h-4 w-4 mr-2"/>
+                          Confirmar contratación y pagar USD 3
+                        </Button>
+                      ) : (
+                        <div className="p-3 rounded-xl text-center"
+                             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                            Esperando que el local confirme y abone la tarifa de gestión.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Chat limitado */}
+                      <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Lock className="h-3.5 w-3.5" style={{ color: "rgba(255,255,255,0.3)" }}/>
+                          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Chat limitado</p>
+                        </div>
+                        <p className="text-xs mb-2.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          Los datos de contacto se habilitan una vez confirmada la contratación.
+                        </p>
+                        <Button onClick={() => goChat(booking)} variant="outline" size="sm"
+                          className="w-full bg-transparent"
+                          style={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)" }}>
+                          <MessageSquare className="h-3.5 w-3.5 mr-1.5"/>
+                          Abrir chat (limitado)
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ━━━ CONFIRMED: chat completo ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                  {(booking.status === "confirmed" || booking.status === "accepted") && (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <ShieldCheck className="h-4 w-4 text-green-400"/>
+                          <p className="text-green-300 font-semibold text-sm">Contratación confirmada y pagada</p>
+                        </div>
+                        <p className="text-xs" style={{ color: "rgba(134,239,172,0.65)" }}>
+                          La fecha está bloqueada. El chat y los datos de contacto están completamente habilitados.
+                        </p>
+                        {booking.payment_method && (
+                          <p className="text-xs mt-1.5" style={{ color: "rgba(134,239,172,0.5)" }}>
+                            Método: {booking.payment_method} · Ref: {booking.payment_reference}
+                          </p>
+                        )}
+                      </div>
+                      <Button onClick={() => goChat(booking)}
+                        className="w-full h-11 font-bold border-0"
+                        style={{ background: "linear-gradient(135deg,#001C55,#B744B8)" }}>
+                        <MessageSquare className="h-4 w-4 mr-2"/>
+                        Abrir chat completo
+                      </Button>
+                      <Button onClick={() => handleComplete(id)} disabled={loading} variant="outline"
+                        className="w-full bg-transparent text-sm"
+                        style={{ border: "1px solid rgba(168,85,247,0.35)", color: "#c084fc" }}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <Trophy className="h-4 w-4 mr-2"/>}
+                        Marcar como evento realizado
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* ━━━ COMPLETED ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                  {booking.status === "completed" && (
+                    <div className="p-4 rounded-xl" style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)" }}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Trophy className="h-4 w-4 text-purple-400"/>
+                        <p className="text-purple-300 font-semibold text-sm">Evento realizado</p>
+                      </div>
+                      <p className="text-xs mb-3" style={{ color: "rgba(216,180,254,0.6)" }}>
+                        ¡El evento fue completado con éxito! Podés dejar tu calificación.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button onClick={() => goChat(booking)} variant="outline" size="sm"
+                          className="flex-1 bg-transparent"
+                          style={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)" }}>
+                          <MessageSquare className="h-3.5 w-3.5 mr-1.5"/>Chat
+                        </Button>
+                        <Button onClick={() => goProfile(booking)} size="sm"
+                          className="flex-1 border-0"
+                          style={{ background: "linear-gradient(135deg,#B744B8,#7a1a8a)" }}>
+                          <Star className="h-3.5 w-3.5 mr-1.5"/>
+                          Calificar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ━━━ REJECTED ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+                  {booking.status === "rejected" && (
+                    <div className="p-3 rounded-xl" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                      <div className="flex items-center gap-2" style={{ color: "#f87171" }}>
+                        <X className="h-4 w-4"/>
+                        <span className="font-semibold text-sm">Propuesta rechazada</span>
+                      </div>
+                      <p className="text-xs mt-1" style={{ color: "rgba(252,165,165,0.55)" }}>
+                        Esta propuesta no pudo concretarse.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </>
   )
 }
