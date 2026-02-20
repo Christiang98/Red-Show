@@ -29,14 +29,19 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Contraseña hasheada correctamente")
 
     console.log("[v0] Creando usuario en BD...")
+    // Agregar columna phone a users si no existe
+    try {
+      await runAsync("ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''", [])
+    } catch { /* columna ya existe */ }
+
     const result = await runAsync(
-      "INSERT INTO users (email, password, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)",
-      [email, hashedPassword, firstName, lastName, role],
+      "INSERT INTO users (email, password, first_name, last_name, role, phone) VALUES (?, ?, ?, ?, ?, ?)",
+      [email, hashedPassword, firstName, lastName, role, phone || ""],
     )
     console.log("[v0] Usuario creado con ID:", result.id)
 
     console.log("[v0] Creando perfil...")
-    // Intentar agregar columna phone al perfil si no existe
+    // Guardar phone también en profiles por compatibilidad
     try {
       await runAsync("ALTER TABLE profiles ADD COLUMN phone TEXT DEFAULT ''", [])
     } catch { /* columna ya existe */ }

@@ -303,7 +303,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t py-8" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
         <div className="container mx-auto px-4 text-center">
-          <p className="text-white/40 text-sm">© 2024 Red Show. Todos los derechos reservados.</p>
+          <p className="text-white/40 text-sm">© 2026 Red Show. Todos los derechos reservados.</p>
         </div>
       </footer>
     </div>

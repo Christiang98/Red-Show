@@ -10,7 +10,8 @@ import { getCurrentUser, logoutUser } from "@/lib/auth"
 import {
   Shield, Users, AlertCircle, HelpCircle, CheckCircle, Calendar,
   Star, Eye, EyeOff, Send, MessageSquare, XCircle,
-  Check, Clock, Ban, Trash2, Mail, Info, UserX, ExternalLink, X, Image as ImageIcon
+  Check, Clock, Ban, Trash2, Mail, Info, UserX, ExternalLink, X, Image as ImageIcon,
+  UserCheck, AlertTriangle, ChevronRight
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -48,6 +49,26 @@ export default function AdminPanel() {
   const [imageModal, setImageModal] = useState<{open: boolean; url: string}>({
     open: false, url: ""
   })
+
+  // Modal de confirmación profesional (reemplaza confirm() del browser)
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    icon: "sanction" | "disable" | "enable"
+    confirmLabel: string
+    confirmClass: string
+    onConfirm: () => void
+    // Sanción extra fields
+    showSanctionFields?: boolean
+    sanctionReason?: string
+    sanctionDays?: number
+  }>({
+    open: false, title: "", description: "", icon: "disable",
+    confirmLabel: "", confirmClass: "", onConfirm: () => {},
+  })
+  const [sanctionReason, setSanctionReason] = useState("")
+  const [sanctionDays, setSanctionDays] = useState(7)
 
   useEffect(() => {
     const currentUser = getCurrentUser()
@@ -127,33 +148,79 @@ export default function AdminPanel() {
     }
   }
 
-  const applySanction = async (userId: number, userName: string) => {
-    if (!confirm(`¿Confirmar sanción para ${userName}?`)) return
-    try {
-      await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action: 'sanction' })
-      })
-      toast({ title: "Sanción aplicada" })
-      loadAllData()
-    } catch (e) {
-      toast({ title: "Error aplicando sanción", variant: "destructive" })
-    }
+  const applySanction = (userId: number, userName: string) => {
+    setSanctionReason("")
+    setSanctionDays(7)
+    setConfirmModal({
+      open: true,
+      title: `Sancionar a ${userName}`,
+      description: "El perfil del usuario será desactivado durante el período indicado y recibirá una notificación.",
+      icon: "sanction",
+      confirmLabel: "Aplicar Sanción",
+      confirmClass: "bg-yellow-500 hover:bg-yellow-600 text-white",
+      showSanctionFields: true,
+      onConfirm: async () => {
+        const endDate = new Date()
+        endDate.setDate(endDate.getDate() + sanctionDays)
+        try {
+          await fetch('/api/admin/users', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId, action: 'sanction',
+              sanctionReason, sanctionDays,
+              sanctionEndDate: endDate.toISOString(),
+            })
+          })
+          toast({ title: "✅ Sanción aplicada", description: `${userName} ha sido sancionado por ${sanctionDays} días.` })
+          loadAllData()
+        } catch { toast({ title: "Error aplicando sanción", variant: "destructive" }) }
+      }
+    })
   }
 
-  const deactivateUser = async (userId: number, userName: string) => {
-    if (!confirm(`¿Dar de baja a ${userName}?`)) return
-    try {
-      await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action: 'deactivate' })
+  const deactivateUser = (userId: number, userName: string, isCurrentlyActive: boolean) => {
+    if (!isCurrentlyActive) {
+      // Usuario ya está dado de baja → ofrecer rehabilitar
+      setConfirmModal({
+        open: true,
+        title: `Rehabilitar a ${userName}`,
+        description: "La cuenta del usuario será reactivada y podrá volver a usar la plataforma.",
+        icon: "enable",
+        confirmLabel: "Rehabilitar cuenta",
+        confirmClass: "bg-green-600 hover:bg-green-700 text-white",
+        onConfirm: async () => {
+          try {
+            await fetch('/api/admin/users', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, action: 'enable' })
+            })
+            toast({ title: "✅ Usuario rehabilitado", description: `${userName} puede volver a acceder.` })
+            loadAllData()
+          } catch { toast({ title: "Error", variant: "destructive" }) }
+        }
       })
-      toast({ title: "Usuario dado de baja" })
-      loadAllData()
-    } catch (e) {
-      toast({ title: "Error", variant: "destructive" })
+    } else {
+      setConfirmModal({
+        open: true,
+        title: `Dar de baja a ${userName}`,
+        description: "La cuenta quedará desactivada. Podés reactivarla en cualquier momento.",
+        icon: "disable",
+        confirmLabel: "Dar de baja",
+        confirmClass: "bg-red-600 hover:bg-red-700 text-white",
+        onConfirm: async () => {
+          try {
+            await fetch('/api/admin/users', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, action: 'deactivate' })
+            })
+            toast({ title: "✅ Usuario dado de baja", description: `La cuenta de ${userName} fue desactivada.` })
+            loadAllData()
+          } catch { toast({ title: "Error", variant: "destructive" }) }
+        }
+      })
     }
   }
 
@@ -375,17 +442,18 @@ export default function AdminPanel() {
                               <Send className="h-3.5 w-3.5" />
                             </Button>
                             {u.is_active !== 0 && (
-                              <>
-                                <Button size="sm" onClick={() => applySanction(u.id, `${u.first_name} ${u.last_name}`)}
-                                  className="h-8 px-3 bg-yellow-600 hover:bg-yellow-700 border-0 text-xs">
-                                  <Ban className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button size="sm" onClick={() => deactivateUser(u.id, `${u.first_name} ${u.last_name}`)}
-                                  className="h-8 px-3 bg-red-600 hover:bg-red-700 border-0 text-xs">
-                                  <UserX className="h-3.5 w-3.5" />
-                                </Button>
-                              </>
+                              <Button size="sm" onClick={() => applySanction(u.id, `${u.first_name} ${u.last_name}`)}
+                                className="h-8 px-3 bg-yellow-600 hover:bg-yellow-700 border-0 text-xs"
+                                title="Sancionar usuario">
+                                <Ban className="h-3.5 w-3.5" />
+                              </Button>
                             )}
+                            <Button size="sm"
+                              onClick={() => deactivateUser(u.id, `${u.first_name} ${u.last_name}`, u.is_active !== 0)}
+                              className={`h-8 px-3 border-0 text-xs ${u.is_active !== 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+                              title={u.is_active !== 0 ? 'Dar de baja' : 'Rehabilitar cuenta'}>
+                              {u.is_active !== 0 ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -399,49 +467,73 @@ export default function AdminPanel() {
           {/* TAB: CONTRATACIONES */}
           <TabsContent value="bookings" className="space-y-3">
             <h3 className="text-xl font-bold text-white mb-4">Contrataciones del Sistema</h3>
-            {bookings.map((b: any) => (
-              <div key={b.id} className="rounded-xl p-5 border" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)" }}>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-white/50 text-xs mb-1">Título</p>
-                    <p className="font-semibold text-white">{b.title || "Contratación"}</p>
+            {bookings.map((b: any) => {
+              const statusLabel: Record<string,string> = {
+                pending:"Pendiente",matched:"Aceptada parcial",accepted:"Aceptada",
+                confirmed:"Confirmada",rejected:"Rechazada",cancelled:"Cancelada",completed:"Finalizada"
+              }
+              const statusColor: Record<string,string> = {
+                pending:"bg-yellow-500",matched:"bg-yellow-400",accepted:"bg-green-500",
+                confirmed:"bg-green-600",rejected:"bg-red-500",cancelled:"bg-red-400",completed:"bg-blue-500"
+              }
+              // sender_role indica quién inició: 'owner' = dueño contrató artista; 'artist' = artista se postuló
+              const ownerIsInitiator = !b.sender_role || b.sender_role === "owner"
+              const senderName = ownerIsInitiator
+                ? (b.owner_business_name || `${b.owner_first_name||""} ${b.owner_last_name||""}`.trim() || "Desconocido")
+                : (b.artist_stage_name   || `${b.artist_first_name||""} ${b.artist_last_name||""}`.trim() || "Desconocido")
+              const receiverName = ownerIsInitiator
+                ? (b.artist_stage_name   || `${b.artist_first_name||""} ${b.artist_last_name||""}`.trim() || "Desconocido")
+                : (b.owner_business_name || `${b.owner_first_name||""} ${b.owner_last_name||""}`.trim() || "Desconocido")
+              const senderEmail   = ownerIsInitiator ? b.owner_email  : b.artist_email
+              const receiverEmail = ownerIsInitiator ? b.artist_email : b.owner_email
+              const fmtD = (d: string) => {
+                if (!d) return "No especificada"
+                if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const [y,m,day]=d.split("-").map(Number); return new Date(y,m-1,day).toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"}) }
+                return new Date(d).toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"})
+              }
+              return (
+                <div key={b.id} className="rounded-xl p-5 border" style={{ background:"rgba(255,255,255,0.04)",borderColor:"rgba(255,255,255,0.1)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="font-bold text-white text-base">{b.title || "Contratación"}</p>
+                      <p className="text-white/40 text-xs mt-0.5">{fmtD(b.booking_date)}{b.event_time ? ` · ${b.event_time.substring(0,5)} hs` : ""}</p>
+                    </div>
+                    <Badge className={statusColor[b.status]||"bg-gray-500"}>{statusLabel[b.status]||b.status}</Badge>
                   </div>
-                  <div>
-                    <p className="text-white/50 text-xs mb-1">Estado</p>
-                    <Badge className={
-                      b.status === 'pending' ? 'bg-yellow-500' :
-                      b.status === 'accepted' || b.status === 'confirmed' ? 'bg-green-500' :
-                      b.status === 'rejected' ? 'bg-red-500' :
-                      b.status === 'completed' ? 'bg-blue-500' : 'bg-gray-500'
-                    }>
-                      {b.status}
-                    </Badge>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                    <div className="flex items-center gap-2.5 p-3 rounded-xl" style={{ background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)" }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background:"linear-gradient(135deg,#1d4ed8,#3b82f6)" }}>
+                        {senderName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Solicitante</p>
+                        <p className="text-sm font-semibold text-white truncate">{senderName}</p>
+                        <p className="text-xs text-white/40 truncate">{senderEmail||""}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 p-3 rounded-xl" style={{ background:"rgba(168,85,247,0.1)",border:"1px solid rgba(168,85,247,0.2)" }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background:"linear-gradient(135deg,#7c3aed,#a855f7)" }}>
+                        {receiverName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Contratado</p>
+                        <p className="text-sm font-semibold text-white truncate">{receiverName}</p>
+                        <p className="text-xs text-white/40 truncate">{receiverEmail||""}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white/50 text-xs mb-1">Emisor</p>
-                    <p className="text-white text-sm">{b.owner_business_name || `${b.owner_first_name || ""} ${b.owner_last_name || ""}`.trim() || b.sender_name || "Desconocido"}</p>
-                  </div>
-                  <div>
-                    <p className="text-white/50 text-xs mb-1">Receptor</p>
-                    <p className="text-white text-sm">{b.artist_stage_name || `${b.artist_first_name || ""} ${b.artist_last_name || ""}`.trim() || "Desconocido"}</p>
-                  </div>
-                  <div>
-                    <p className="text-white/50 text-xs mb-1">Fecha del Evento</p>
-                    <p className="text-white text-sm">{b.booking_date ? (() => { if (/^\d{4}-\d{2}-\d{2}$/.test(b.booking_date)) { const [y,m,d] = b.booking_date.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('es-AR') } return new Date(b.booking_date).toLocaleDateString('es-AR') })() : 'No especificada'}</p>
-                  </div>
-                  <div>
-                    <p className="text-white/50 text-xs mb-1">Precio Propuesto</p>
-                    <p className="text-white text-sm">{b.price ? `$${b.price}` : 'No especificado'}</p>
-                  </div>
+                  {b.price && <p className="text-xs text-white/50 mb-2">Precio: <span className="text-white font-semibold">${Number(b.price).toLocaleString("es-AR")}</span></p>}
+                  {b.message && (
+                    <div className="p-3 rounded-lg" style={{ background:"rgba(255,255,255,0.04)" }}>
+                      <p className="text-white/50 text-xs mb-1">Mensaje</p>
+                      <p className="text-white/70 text-sm italic">"{b.message}"</p>
+                    </div>
+                  )}
                 </div>
-                {b.message && (
-                  <div className="mt-4 p-3 rounded-lg bg-white/5">
-                    <p className="text-white/50 text-xs mb-1">Mensaje</p>
-                    <p className="text-white/70 text-sm italic">"{b.message}"</p>
-                  </div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </TabsContent>
 
           {/* TAB: REPORTES */}
@@ -600,42 +692,154 @@ export default function AdminPanel() {
           <TabsContent value="reviews" className="space-y-3">
             <h3 className="text-xl font-bold text-white mb-4">Reseñas del Sistema</h3>
             {reviews.map((rev: any) => (
-              <div key={rev.id} className="rounded-xl p-5 border" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)" }}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex">
-                        {[...Array(rev.rating)].map((_, i) => <Star key={i} className="h-4 w-4 fill-yellow-500 text-yellow-500" />)}
-                      </div>
-                      <Badge className={rev.is_visible ? 'bg-green-500' : 'bg-gray-500'}>
-                        {rev.is_visible ? 'Visible' : 'Oculta'}
-                      </Badge>
-                      <span className="text-white/50 text-xs">{new Date(rev.created_at).toLocaleDateString('es-AR')}</span>
+              <div key={rev.id} className="rounded-xl p-5 border" style={{ background: "rgba(234,179,8,0.06)", borderColor: "rgba(234,179,8,0.2)" }}>
+                {/* Header: estrellas + visibilidad + fecha */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex">
+                      {[1,2,3,4,5].map(i => (
+                        <Star key={i} className={`h-4 w-4 ${i <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-700 text-gray-700'}`} />
+                      ))}
                     </div>
-                    <p className="text-white/70 text-sm mb-2">{rev.comment}</p>
-                    <div className="flex gap-4 text-xs text-white/50">
-                      <span>Por: {rev.reviewer_name || "Desconocido"}</span>
-                      <span>Para: {rev.reviewed_name || "Desconocido"}</span>
+                    <span className="font-bold text-yellow-400 text-sm">{rev.rating}/5</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/40 text-xs">{new Date(rev.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })}</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${rev.is_visible ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-gray-500/15 text-gray-400 border-gray-500/30'}`}>
+                      {rev.is_visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                      {rev.is_visible ? 'Visible' : 'Oculta'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Autor → Destinatario */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)" }}>
+                      {(rev.reviewer_name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Autor de la reseña</p>
+                      <p className="text-sm font-semibold text-white truncate">{rev.reviewer_name || "Desconocido"}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => toggleReviewVisibility(rev.id, rev.is_visible)}
-                      variant="outline" className="border-white/20 bg-transparent h-8">
-                      {rev.is_visible ? <EyeOff className="h-3.5 w-3.5 mr-1" /> : <Eye className="h-3.5 w-3.5 mr-1" />}
-                      {rev.is_visible ? 'Ocultar' : 'Mostrar'}
-                    </Button>
-                    <Button size="sm" onClick={() => deleteReview(rev.id)}
-                      className="bg-red-600 hover:bg-red-700 border-0 h-8">
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      Eliminar
-                    </Button>
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl" style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)" }}>
+                      {(rev.reviewed_name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Reseña dirigida a</p>
+                      <p className="text-sm font-semibold text-white truncate">{rev.reviewed_name || "Desconocido"}</p>
+                    </div>
                   </div>
+                </div>
+
+                {/* Comentario */}
+                {rev.comment && (
+                  <div className="p-3 rounded-xl mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <p className="text-white/70 text-sm italic">"{rev.comment}"</p>
+                  </div>
+                )}
+
+                {/* Acciones */}
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => toggleReviewVisibility(rev.id, rev.is_visible)}
+                    variant="outline" className="border-white/20 bg-transparent text-white/80 hover:bg-white/10 h-8">
+                    {rev.is_visible ? <EyeOff className="h-3.5 w-3.5 mr-1.5" /> : <Eye className="h-3.5 w-3.5 mr-1.5" />}
+                    {rev.is_visible ? 'Ocultar' : 'Mostrar'}
+                  </Button>
+                  <Button size="sm" onClick={() => deleteReview(rev.id)}
+                    className="bg-red-600 hover:bg-red-700 border-0 h-8">
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />Eliminar
+                  </Button>
                 </div>
               </div>
             ))}
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* MODAL: Confirmación profesional (sancionar / dar de baja / rehabilitar) */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: "linear-gradient(160deg,#0d1022 0%,#080b14 100%)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            {/* Header */}
+            <div className={`px-6 pt-6 pb-4 flex items-center gap-4 ${
+              confirmModal.icon === "sanction" ? "border-b border-yellow-500/20" :
+              confirmModal.icon === "enable"   ? "border-b border-green-500/20"  :
+                                                 "border-b border-red-500/20"
+            }`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+                confirmModal.icon === "sanction" ? "bg-yellow-500/15" :
+                confirmModal.icon === "enable"   ? "bg-green-500/15"  :
+                                                   "bg-red-500/15"
+              }`}>
+                {confirmModal.icon === "sanction" ? <Ban className="h-6 w-6 text-yellow-400" /> :
+                 confirmModal.icon === "enable"   ? <UserCheck className="h-6 w-6 text-green-400" /> :
+                                                    <UserX className="h-6 w-6 text-red-400" />}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">{confirmModal.title}</h3>
+                <p className="text-white/50 text-sm mt-0.5">{confirmModal.description}</p>
+              </div>
+            </div>
+
+            {/* Campos extra para sanción */}
+            {confirmModal.showSanctionFields && (
+              <div className="px-6 py-4 space-y-4 border-b border-white/10">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1.5">Motivo de la sanción *</label>
+                  <textarea
+                    value={sanctionReason}
+                    onChange={e => setSanctionReason(e.target.value)}
+                    placeholder="Describe el motivo de la sanción..."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl text-white placeholder-white/30 text-sm resize-none focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1.5">Duración: <span className="text-yellow-400 font-bold">{sanctionDays} días</span></label>
+                  <input type="range" min={1} max={365} value={sanctionDays}
+                    onChange={e => setSanctionDays(Number(e.target.value))}
+                    className="w-full accent-yellow-500" />
+                  <div className="flex gap-2 mt-2">
+                    {[3,7,14,30,90].map(d => (
+                      <button key={d} onClick={() => setSanctionDays(d)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${sanctionDays === d ? 'bg-yellow-500 text-white border-yellow-500' : 'border-white/20 text-white/50 hover:border-yellow-400 hover:text-yellow-400'}`}>
+                        {d}d
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-yellow-400/70 mt-2">
+                    📅 Finaliza: {(() => { const d = new Date(); d.setDate(d.getDate()+sanctionDays); return d.toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"}) })()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Acciones */}
+            <div className="flex gap-3 p-6">
+              <Button variant="outline" className="flex-1 border-white/20 bg-transparent text-white hover:bg-white/10"
+                onClick={() => setConfirmModal(m => ({ ...m, open: false }))}>
+                Cancelar
+              </Button>
+              <Button
+                className={`flex-1 border-0 ${confirmModal.confirmClass}`}
+                disabled={confirmModal.showSanctionFields && !sanctionReason.trim()}
+                onClick={() => { setConfirmModal(m => ({ ...m, open: false })); confirmModal.onConfirm() }}>
+                {confirmModal.icon === "sanction" ? <Ban className="h-4 w-4 mr-2" /> :
+                 confirmModal.icon === "enable"   ? <UserCheck className="h-4 w-4 mr-2" /> :
+                                                    <UserX className="h-4 w-4 mr-2" />}
+                {confirmModal.confirmLabel}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Enviar Mensaje */}
       {messageModal.open && (
@@ -700,7 +904,9 @@ export default function AdminPanel() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <p className="text-white/50 text-xs mb-1">Rol</p>
-                    <p className="text-white font-semibold capitalize">{detailsModal.user.role}</p>
+                    <p className="text-white font-semibold">
+                      {detailsModal.user.role === 'admin' ? 'Administrador' : detailsModal.user.role === 'artist' ? 'Artista' : detailsModal.user.role === 'owner' ? 'Dueño de Local' : detailsModal.user.role}
+                    </p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <p className="text-white/50 text-xs mb-1">Teléfono</p>

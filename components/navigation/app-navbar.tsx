@@ -121,7 +121,7 @@ export function AppNavbar() {
                     {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                   </div>
                   <div className="text-left hidden lg:block">
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-gray-700">
                       {user.firstName}
                     </p>
                     <p className="text-xs text-gray-500 capitalize">
@@ -130,34 +130,34 @@ export function AppNavbar() {
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-3 py-2 border-b">
-                  <p className="font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
-                  <p className="text-sm text-gray-500">{user.email}</p>
+              <DropdownMenuContent align="end" className="w-56" style={{ background: "#0d1022", border: "1px solid rgba(255,255,255,0.12)" }}>
+                <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                  <p className="font-semibold text-white">{user.firstName} {user.lastName}</p>
+                  <p className="text-sm text-white/50">{user.email}</p>
                 </div>
                 <DropdownMenuItem asChild>
-                  <Link href="/my-profile" className="cursor-pointer flex items-center gap-2">
+                  <Link href="/my-profile" className="cursor-pointer flex items-center gap-2 text-white/80 hover:text-white focus:text-white focus:bg-white/10">
                     <User size={16} />
                     Ver Mi Perfil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={profileEditLink} className="cursor-pointer flex items-center gap-2">
+                  <Link href={profileEditLink} className="cursor-pointer flex items-center gap-2 text-white/80 hover:text-white focus:text-white focus:bg-white/10">
                     <User size={16} />
                     Editar Perfil
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator style={{ background: "rgba(255,255,255,0.1)" }} />
                 <DropdownMenuItem asChild>
-                  <Link href="/hirings" className="cursor-pointer flex items-center gap-2">
+                  <Link href="/hirings" className="cursor-pointer flex items-center gap-2 text-white/80 hover:text-white focus:text-white focus:bg-white/10">
                     <Calendar size={16} />
                     Gestionar Contrataciones
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 flex items-center gap-2">
+                <DropdownMenuSeparator style={{ background: "rgba(255,255,255,0.1)" }} />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:text-red-300 focus:text-red-300 focus:bg-red-500/10 flex items-center gap-2">
                   <LogOut size={16} />
-                  Cerrar Sesion
+                  Cerrar Sesión
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

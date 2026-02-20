@@ -10,7 +10,15 @@ export async function POST(request: NextRequest) {
     const { email, password } = await request.json()
     console.log("[v0] Login con email:", email)
 
-    const user = await getAsync("SELECT * FROM users WHERE email = ?", [email])
+    // JOIN con profiles para obtener el teléfono (guardado en profiles al registrarse en versiones anteriores)
+    // También revisamos users.phone que es donde se guarda desde ahora
+    const user = await getAsync(
+      `SELECT u.*, COALESCE(NULLIF(u.phone,''), p.phone, "") as phone_value
+       FROM users u
+       LEFT JOIN profiles p ON u.id = p.user_id
+       WHERE u.email = ?`,
+      [email]
+    )
     if (!user) {
       console.log("[v0] Usuario no encontrado:", email)
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
@@ -33,6 +41,7 @@ export async function POST(request: NextRequest) {
           firstName: user.first_name,
           lastName: user.last_name,
           role: user.role,
+          phone: user.phone_value || "",
         },
         token,
       },

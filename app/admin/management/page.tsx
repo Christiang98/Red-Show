@@ -830,8 +830,18 @@ export default function AdminManagement() {
                 <div className="divide-y divide-border/40">
                   {bookings.map(b => {
                     const si = BOOKING_STATUS[b.status] || { label: b.status, color: "text-gray-400", bg: "bg-gray-500/15 border-gray-500/30" }
-                    const senderName = b.owner_business_name || `${b.owner_first_name || ""} ${b.owner_last_name || ""}`.trim() || "Usuario desconocido"
-                    const receiverName = b.artist_stage_name || `${b.artist_first_name || ""} ${b.artist_last_name || ""}`.trim() || "Usuario desconocido"
+                    // sender_role indica quién inició: 'owner' = dueño contrató; 'artist' = artista se postuló
+                    const ownerIsInitiator = !b.sender_role || b.sender_role === "owner"
+                    const senderName = ownerIsInitiator
+                      ? (b.owner_business_name || `${b.owner_first_name || ""} ${b.owner_last_name || ""}`.trim() || "Usuario desconocido")
+                      : (b.artist_stage_name   || `${b.artist_first_name || ""} ${b.artist_last_name || ""}`.trim() || "Usuario desconocido")
+                    const receiverName = ownerIsInitiator
+                      ? (b.artist_stage_name   || `${b.artist_first_name || ""} ${b.artist_last_name || ""}`.trim() || "Usuario desconocido")
+                      : (b.owner_business_name || `${b.owner_first_name || ""} ${b.owner_last_name || ""}`.trim() || "Usuario desconocido")
+                    const senderEmail   = ownerIsInitiator ? b.owner_email  : b.artist_email
+                    const receiverEmail = ownerIsInitiator ? b.artist_email : b.owner_email
+                    const senderRole    = ownerIsInitiator ? "owner" : "artist"
+                    const receiverRole  = ownerIsInitiator ? "artist" : "owner"
                     const isActive = ["pending","matched","accepted","confirmed"].includes(b.status)
 
                     return (
@@ -841,11 +851,11 @@ export default function AdminManagement() {
                           <div className="flex items-center gap-3 flex-wrap">
                             {/* Emisor */}
                             <div className="flex items-center gap-2">
-                              <UserAvatar name={senderName} size="sm" role="owner" active />
+                              <UserAvatar name={senderName} size="sm" role={senderRole} active />
                               <div>
                                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Solicitante</p>
                                 <p className="font-semibold text-foreground text-sm leading-tight">{senderName}</p>
-                                <p className="text-xs text-muted-foreground">{b.owner_email || "—"}</p>
+                                <p className="text-xs text-muted-foreground">{senderEmail || "—"}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 text-muted-foreground/40">
@@ -854,11 +864,11 @@ export default function AdminManagement() {
                             </div>
                             {/* Receptor */}
                             <div className="flex items-center gap-2">
-                              <UserAvatar name={receiverName} size="sm" role="artist" active />
+                              <UserAvatar name={receiverName} size="sm" role={receiverRole} active />
                               <div>
                                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Contratado</p>
                                 <p className="font-semibold text-foreground text-sm leading-tight">{receiverName}</p>
-                                <p className="text-xs text-muted-foreground">{b.artist_email || "—"}</p>
+                                <p className="text-xs text-muted-foreground">{receiverEmail || "—"}</p>
                               </div>
                             </div>
                           </div>
