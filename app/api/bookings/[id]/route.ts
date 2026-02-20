@@ -21,9 +21,10 @@ function genReference() {
   return "PAY-" + Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await ensureColumns()
+    const { id: bookingId } = await params
 
     const body = await request.json()
     const { status, simulatePayment, paymentMethod } = body
@@ -40,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
        JOIN users a ON b.artist_id = a.id
        JOIN users o ON b.owner_id  = o.id
        WHERE b.id = ?`,
-      [params.id],
+      [bookingId],
     )
 
     if (!booking) {
@@ -75,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
            payment_status    = 'Aprobado',
            updated_at        = ?
          WHERE id = ?`,
-        [now, paymentMethod || "tarjeta", now, ref, now, params.id],
+        [now, paymentMethod || "tarjeta", now, ref, now, bookingId],
       )
 
       for (const uid of [booking.artist_id, booking.owner_id]) {
@@ -90,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         )
       }
 
-      const updated = await getAsync("SELECT * FROM bookings WHERE id = ?", [params.id])
+      const updated = await getAsync("SELECT * FROM bookings WHERE id = ?", [bookingId])
       return NextResponse.json({ ...updated, payment_reference: ref }, { status: 200 })
     }
 
@@ -119,7 +120,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     await runAsync(
       "UPDATE bookings SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [status, params.id],
+      [status, bookingId],
     )
 
     const senderIsArtist = booking.sender_role === "artist"
@@ -161,7 +162,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
     }
 
-    const updated = await getAsync("SELECT * FROM bookings WHERE id = ?", [params.id])
+    const updated = await getAsync("SELECT * FROM bookings WHERE id = ?", [bookingId])
     return NextResponse.json(updated, { status: 200 })
   } catch (e: any) {
     console.error("[bookings PATCH]", e)
@@ -169,8 +170,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: bookingId } = await params
     const booking = await getAsync(
       `SELECT b.*,
          a.first_name || ' ' || a.last_name AS artist_name,
@@ -186,7 +188,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
        JOIN users o ON b.owner_id  = o.id
        LEFT JOIN owner_profiles op ON o.id = op.user_id
        WHERE b.id = ?`,
-      [params.id],
+      [bookingId],
     )
     if (!booking) return NextResponse.json({ error: "Propuesta no encontrada" }, { status: 404 })
     return NextResponse.json(booking)

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { getCurrentUser } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
-import { HelpCircle, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { HelpCircle, ArrowLeft, CheckCircle2, ImageIcon, X } from "lucide-react"
 
 export default function SupportPage() {
   const router = useRouter()
@@ -22,6 +22,25 @@ export default function SupportPage() {
     message: "",
     priority: "medium",
   })
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Imagen muy grande", description: "El archivo no puede superar los 5MB.", variant: "destructive" })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const removeImage = () => {
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
 
   const SUPPORT_CATEGORIES = [
     "Problema técnico",
@@ -54,6 +73,7 @@ export default function SupportPage() {
           category: formData.category,
           message: formData.message,
           priority: formData.priority,
+          imageUrl: imagePreview || null,
         }),
       })
 
@@ -197,6 +217,42 @@ export default function SupportPage() {
                 Nuestro equipo de soporte responderá tu consulta en un plazo de 24-48 horas. Para problemas urgentes,
                 selecciona la prioridad "Urgente".
               </p>
+            </div>
+
+            {/* Photo upload */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Captura de pantalla (opcional)</label>
+              <p className="text-xs text-muted-foreground mb-3">Si querés mostrarnos algo en particular, podés adjuntar una imagen.</p>
+
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img src={imagePreview} alt="Vista previa" className="max-h-48 rounded-xl border border-border object-contain" />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive rounded-full flex items-center justify-center text-white hover:bg-destructive/80"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                >
+                  <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Hacé clic para subir una imagen</p>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG o WEBP · Máx. 5MB</p>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
             </div>
 
             <div className="flex gap-3">

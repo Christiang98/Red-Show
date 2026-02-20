@@ -12,10 +12,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
     }
 
+    // Asegurar columnas nuevas
+    const migrations = [
+      "ALTER TABLE bookings ADD COLUMN event_time TEXT",
+      "ALTER TABLE bookings ADD COLUMN proposed_price DECIMAL(10,2)",
+    ]
+    for (const sql of migrations) {
+      try { await runAsync(sql, []) } catch { /* ya existe */ }
+    }
+
     const bookings = await allAsync(
       `
       SELECT 
-        b.*,
+        b.id, b.status, b.title, b.description, b.message,
+        b.booking_date, b.event_time, b.price,
+        COALESCE(b.proposed_price, b.price) as proposed_price,
+        b.commission_paid, b.confirmed_at,
+        b.payment_reference, b.created_at, b.updated_at,
+        b.artist_id, b.owner_id,
         u_artist.first_name as artist_first_name,
         u_artist.last_name as artist_last_name,
         u_artist.email as artist_email,

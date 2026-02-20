@@ -57,7 +57,14 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
   const [errors, setErrors]       = useState<Record<string, string>>({})
 
   const displayDate = bookingDate
-    ? new Date(bookingDate).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+    ? (() => {
+        // Avoid UTC offset: parse YYYY-MM-DD as local date
+        if (/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) {
+          const [y, m, d] = bookingDate.split("-").map(Number)
+          return new Date(y, m - 1, d).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+        }
+        return new Date(bookingDate).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+      })()
     : "A definir"
 
   // ── Validación de tarjeta ──────────────────────────────────────────────────

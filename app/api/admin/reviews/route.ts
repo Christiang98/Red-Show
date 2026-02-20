@@ -6,29 +6,25 @@ export async function GET() {
   try {
     await initializeDatabaseIfNeeded()
 
+    // Asegurar que is_visible exista
+    try { await runQuery("ALTER TABLE reviews ADD COLUMN is_visible BOOLEAN DEFAULT 1", []) } catch { /* ya existe */ }
+
     const reviews = await allQuery(
       `SELECT 
-        r.*,
-        reviewer.email as reviewer_email,
-        reviewer.first_name as reviewer_first_name,
-        reviewer.last_name as reviewer_last_name,
-        reviewed.email as reviewed_email,
-        reviewed.first_name as reviewed_first_name,
-        reviewed.last_name as reviewed_last_name,
-        ap.stage_name as reviewed_artist_name,
-        op.business_name as reviewed_business_name
+        r.id, r.reviewer_id, r.reviewed_user_id, r.booking_id,
+        r.rating, r.comment, r.is_visible, r.created_at,
+        reviewer.first_name || ' ' || reviewer.last_name as reviewer_name,
+        reviewed.first_name || ' ' || reviewed.last_name as reviewed_name
       FROM reviews r
       LEFT JOIN users reviewer ON r.reviewer_id = reviewer.id
       LEFT JOIN users reviewed ON r.reviewed_user_id = reviewed.id
-      LEFT JOIN artist_profiles ap ON reviewed.id = ap.user_id
-      LEFT JOIN owner_profiles op ON reviewed.id = op.user_id
       ORDER BY r.created_at DESC`,
       [],
     )
 
     return NextResponse.json({ reviews })
   } catch (error) {
-    console.error("[v0] Error obteniendo reseñas:", error)
+    console.error("[admin reviews GET]", error)
     return NextResponse.json({ error: "Error obteniendo reseñas" }, { status: 500 })
   }
 }
@@ -39,25 +35,49 @@ export async function PATCH(request: NextRequest) {
     await initializeDatabaseIfNeeded()
 
     const body = await request.json()
-    const { reviewId, action } = body
+    const { reviewId, isVisible, action } = body
 
-    if (!reviewId || !action) {
-      return NextResponse.json({ error: "reviewId y action son requeridos" }, { status: 400 })
+    if (!reviewId) {
+      return NextResponse.json({ error: "reviewId es requerido" }, { status: 400 })
     }
 
-    console.log("[v0] Acción de admin en reseña:", reviewId, "acción:", action)
-
-    if (action === "hide") {
+    // Support both action-based (from management page) and isVisible-based patterns
+    if (action === "delete") {
+      await runQuery(`DELETE FROM reviews WHERE id = ?`, [reviewId])
+      return NextResponse.json({ success: true, message: "Reseña eliminada" })
+    } else if (action === "hide") {
       await runQuery(`UPDATE reviews SET is_visible = 0 WHERE id = ?`, [reviewId])
     } else if (action === "show") {
       await runQuery(`UPDATE reviews SET is_visible = 1 WHERE id = ?`, [reviewId])
-    } else if (action === "delete") {
-      await runQuery(`DELETE FROM reviews WHERE id = ?`, [reviewId])
+    } else if (isVisible !== undefined) {
+      await runQuery(`UPDATE reviews SET is_visible = ? WHERE id = ?`, [isVisible ? 1 : 0, reviewId])
+    } else {
+      return NextResponse.json({ error: "Se requiere action o isVisible" }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true, message: `Reseña ${action}` })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error en acción de admin sobre reseña:", error)
-    return NextResponse.json({ error: "Error ejecutando acción" }, { status: 500 })
+    console.error("[admin reviews PATCH]", error)
+    return NextResponse.json({ error: "Error actualizando reseña" }, { status: 500 })
+  }
+}
+
+// DELETE - Eliminar reseña (solo admin)
+export async function DELETE(request: NextRequest) {
+  try {
+    await initializeDatabaseIfNeeded()
+
+    const body = await request.json()
+    const { reviewId } = body
+
+    if (!reviewId) {
+      return NextResponse.json({ error: "reviewId es requerido" }, { status: 400 })
+    }
+
+    await runQuery(`DELETE FROM reviews WHERE id = ?`, [reviewId])
+    return NextResponse.json({ success: true, message: "Reseña eliminada" })
+  } catch (error) {
+    console.error("[admin reviews DELETE]", error)
+    return NextResponse.json({ error: "Error eliminando reseña" }, { status: 500 })
   }
 }

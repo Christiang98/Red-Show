@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import {
   Check, X, MessageSquare, Calendar, User, Loader2,
   Clock, AlertCircle, CreditCard, Star, Trophy,
-  ChevronDown, ChevronUp, Lock, Unlock, ShieldCheck,
+  ChevronDown, ChevronUp, Lock, Unlock, ShieldCheck, DollarSign,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
@@ -33,6 +33,8 @@ interface Booking {
   payment_reference?: string
   artist_name?: string
   owner_name?: string
+  event_time?: string
+  proposed_price?: number
 }
 
 interface BookingListProps {
@@ -162,6 +164,14 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
           const loading  = loadingId  === id
           const cfg      = STATUS[booking.status] ?? STATUS.pending
           const displayDate = booking.booking_date || booking.date
+          // Parse date as local (avoid UTC timezone offset shifting date by 1 day)
+          const fmtDisplayDate = (d: string) => {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+              const [y, m, day] = d.split("-").map(Number)
+              return new Date(y, m - 1, day).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+            }
+            return new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+          }
 
           return (
             <div key={id} className="rounded-2xl overflow-hidden transition-all duration-200"
@@ -186,8 +196,7 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
                     {displayDate && (
                       <span className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5" />
-                        {new Date(displayDate).toLocaleDateString("es-AR",
-                          { day: "2-digit", month: "long", year: "numeric" })}
+                        {fmtDisplayDate(displayDate)}
                       </span>
                     )}
                     {booking.sender_name && (
@@ -249,6 +258,46 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
                         style={{ color: "#c084fc", border: "1px solid rgba(183,68,184,0.3)", background: "rgba(183,68,184,0.1)" }}>
                         Ver perfil
                       </button>
+                    </div>
+                  )}
+
+                  {/* Detalles del evento: fecha, horario, precio propuesto */}
+                  {(displayDate || booking.event_time || booking.proposed_price || booking.price) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {displayDate && (
+                        <div className="flex items-center gap-2.5 p-3 rounded-xl"
+                             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                          <Calendar className="h-4 w-4 text-blue-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(147,197,253,0.6)" }}>Fecha del evento</p>
+                            <p className="text-sm font-bold text-blue-200">
+                              {fmtDisplayDate(displayDate)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {booking.event_time && (
+                        <div className="flex items-center gap-2.5 p-3 rounded-xl"
+                             style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}>
+                          <Clock className="h-4 w-4 text-purple-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(216,180,254,0.6)" }}>Horario</p>
+                            <p className="text-sm font-bold text-purple-200">{booking.event_time.substring(0, 5)} hs</p>
+                          </div>
+                        </div>
+                      )}
+                      {(booking.proposed_price || booking.price) && (
+                        <div className="flex items-center gap-2.5 p-3 rounded-xl"
+                             style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                          <DollarSign className="h-4 w-4 text-green-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(134,239,172,0.6)" }}>Precio propuesto</p>
+                            <p className="text-sm font-bold text-green-200">
+                              ${Number(booking.proposed_price || booking.price).toLocaleString("es-AR")}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

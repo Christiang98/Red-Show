@@ -14,6 +14,8 @@ async function ensureColumns() {
     "ALTER TABLE bookings ADD COLUMN payment_date DATETIME",
     "ALTER TABLE bookings ADD COLUMN payment_reference VARCHAR(50)",
     "ALTER TABLE bookings ADD COLUMN payment_status VARCHAR(20)",
+    "ALTER TABLE bookings ADD COLUMN event_time TEXT",
+    "ALTER TABLE bookings ADD COLUMN proposed_price DECIMAL(10,2)",
   ]
   for (const sql of migrations) {
     try { await runAsync(sql, []) } catch { /* ya existe */ }
@@ -22,6 +24,7 @@ async function ensureColumns() {
 
 export async function GET(request: NextRequest) {
   try {
+    await ensureColumns()
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get("userId")
     const status = searchParams.get("status")
@@ -53,15 +56,28 @@ export async function POST(request: NextRequest) {
     const {
       artistId, ownerId, eventId, title, description,
       bookingDate, price, senderName, senderImage, senderRole, message,
+      eventTime,
     } = await request.json()
+
+    // Normalize bookingDate: if it's a date-only string (YYYY-MM-DD), keep it as-is
+    // to avoid timezone shifting. If it's a full ISO string, extract the date part.
+    let normalizedDate: string | null = null
+    if (bookingDate) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) {
+        normalizedDate = bookingDate // already a plain date string, safe
+      } else {
+        // Extract YYYY-MM-DD part without timezone conversion
+        normalizedDate = bookingDate.substring(0, 10)
+      }
+    }
 
     const result = await runAsync(
       `INSERT INTO bookings
-        (artist_id, owner_id, event_id, title, description, booking_date, price,
-         sender_name, sender_image, sender_role, message, status, commission_paid)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)`,
-      [artistId, ownerId, eventId, title, description, bookingDate, price,
-       senderName, senderImage, senderRole, message],
+        (artist_id, owner_id, event_id, title, description, booking_date, price, proposed_price,
+         event_time, sender_name, sender_image, sender_role, message, status, commission_paid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)`,
+      [artistId, ownerId, eventId, title, description, normalizedDate, price, price,
+       eventTime, senderName, senderImage, senderRole, message],
     )
 
     const artist = await getAsync("SELECT first_name, last_name FROM users WHERE id = ?", [artistId])

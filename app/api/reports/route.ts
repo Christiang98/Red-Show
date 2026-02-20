@@ -5,7 +5,7 @@ import { runQuery, allQuery } from "@/lib/db"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { reporterId, reportedUserId, reason, description } = body
+    const { reporterId, reportedUserId, reason, description, imageUrl } = body
 
     if (!reporterId || !reportedUserId || !reason || !description) {
       return NextResponse.json({ error: "Todos los campos son requeridos" }, { status: 400 })
@@ -16,12 +16,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No podés reportarte a vos mismo" }, { status: 400 })
     }
 
+    // Ensure image_url column exists
+    try { await runQuery("ALTER TABLE reports ADD COLUMN image_url TEXT", []) } catch { /* ya existe */ }
+
     console.log("[v0] Creando reporte de usuario:", reporterId, "contra:", reportedUserId)
 
     const result = await runQuery(
-      `INSERT INTO reports (reporter_id, reported_user_id, reason, description, status) 
-       VALUES (?, ?, ?, ?, 'pending')`,
-      [reporterId, reportedUserId, reason, description],
+      `INSERT INTO reports (reporter_id, reported_user_id, reason, description, image_url, status) 
+       VALUES (?, ?, ?, ?, ?, 'pending')`,
+      [reporterId, reportedUserId, reason, description, imageUrl || null],
     )
 
     return NextResponse.json({

@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     await initializeDatabaseIfNeeded()
 
     const body = await request.json()
-    const { userId, subject, category, message, priority } = body
+    const { userId, subject, category, message, priority, imageUrl } = body
 
     console.log("[v0] Datos recibidos para ticket:", { userId, subject, category, message, priority })
 
@@ -16,12 +16,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Todos los campos son requeridos" }, { status: 400 })
     }
 
+    // Ensure image_url column exists
+    try { await runQuery("ALTER TABLE support_tickets ADD COLUMN image_url TEXT", []) } catch { /* ya existe */ }
+
     console.log("[v0] Creando ticket de soporte para usuario:", userId)
 
     const result = await runQuery(
-      `INSERT INTO support_tickets (user_id, subject, category, message, priority, status, created_at) 
-       VALUES (?, ?, ?, ?, ?, 'open', datetime('now'))`,
-      [userId, subject, category, message, priority || "medium"],
+      `INSERT INTO support_tickets (user_id, subject, category, message, priority, image_url, status, created_at) 
+       VALUES (?, ?, ?, ?, ?, ?, 'open', datetime('now'))`,
+      [userId, subject, category, message, priority || "medium", imageUrl || null],
     )
 
     console.log("[v0] Ticket creado con éxito, ID:", result.id)
@@ -56,7 +59,7 @@ export async function GET(request: NextRequest) {
       const tickets = await allQuery(
         `SELECT 
           t.*,
-          u.email, u.first_name, u.last_name, u.phone
+          u.email, u.first_name, u.last_name, u.phone, u.role
         FROM support_tickets t
         LEFT JOIN users u ON t.user_id = u.id
         ORDER BY 

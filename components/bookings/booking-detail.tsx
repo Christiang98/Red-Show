@@ -49,7 +49,15 @@ export function BookingDetail({ booking, userRole, onAccept, onReject, onCancel 
             <CardTitle className="text-2xl">{booking.title}</CardTitle>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              <span>{format(new Date(booking.bookingDate), "PPP 'a las' p", { locale: es })}</span>
+              <span>{(() => {
+                // Parse YYYY-MM-DD as local date to avoid UTC timezone offset issues
+                const d = booking.bookingDate
+                if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                  const [y, m, day] = d.split("-").map(Number)
+                  return format(new Date(y, m - 1, day), "PPP", { locale: es })
+                }
+                return format(new Date(booking.bookingDate), "PPP 'a las' p", { locale: es })
+              })()}</span>
             </div>
           </div>
           <Badge className={`${status.color} text-white`}>

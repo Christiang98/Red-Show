@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState, use } from "react"
+import { useState, use, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { getCurrentUser } from "@/lib/auth"
-import { AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle2, ImageIcon, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ReportUserPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +22,8 @@ export default function ReportUserPage({ params }: { params: Promise<{ id: strin
     reason: "",
     description: "",
   })
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const REPORT_REASONS = [
     "Contenido inapropiado",
@@ -31,6 +33,23 @@ export default function ReportUserPage({ params }: { params: Promise<{ id: strin
     "Incumplimiento de términos",
     "Otro",
   ]
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Imagen muy grande", description: "El archivo no puede superar los 5MB.", variant: "destructive" })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const removeImage = () => {
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,6 +75,7 @@ export default function ReportUserPage({ params }: { params: Promise<{ id: strin
           reportedUserId: reportedUserId,
           reason: formData.reason,
           description: formData.description,
+          imageUrl: imagePreview || null,
         }),
       })
 
@@ -97,7 +117,6 @@ export default function ReportUserPage({ params }: { params: Promise<{ id: strin
         </Button>
 
         {submitted ? (
-          /* Pantalla de éxito estilizada */
           <Card className="p-10 text-center">
             <div className="flex flex-col items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
@@ -111,7 +130,7 @@ export default function ReportUserPage({ params }: { params: Promise<{ id: strin
                 <Button onClick={() => router.push("/search")} className="bg-primary hover:bg-primary/90">
                   Volver a la búsqueda
                 </Button>
-                <Button variant="outline" onClick={() => { setSubmitted(false); setFormData({ reason: "", description: "" }) }}>
+                <Button variant="outline" onClick={() => { setSubmitted(false); setFormData({ reason: "", description: "" }); setImagePreview(null) }}>
                   Nuevo reporte
                 </Button>
               </div>
@@ -159,6 +178,42 @@ export default function ReportUserPage({ params }: { params: Promise<{ id: strin
                   minLength={20}
                 />
                 <p className="text-xs text-muted-foreground mt-1">Mínimo 20 caracteres ({formData.description.length}/20)</p>
+              </div>
+
+              {/* Photo upload */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Evidencia fotográfica (opcional)</label>
+                <p className="text-xs text-muted-foreground mb-3">Adjuntá una captura de pantalla si querés mostrarnos algo en particular.</p>
+
+                {imagePreview ? (
+                  <div className="relative inline-block">
+                    <img src={imagePreview} alt="Vista previa" className="max-h-48 rounded-xl border border-border object-contain" />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive rounded-full flex items-center justify-center text-white hover:bg-destructive/80"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                  >
+                    <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Hacé clic para subir una imagen</p>
+                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG o WEBP · Máx. 5MB</p>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
               </div>
 
               <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">

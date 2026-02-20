@@ -223,6 +223,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               reported_user_id INTEGER NOT NULL,
               reason VARCHAR(100) NOT NULL,
               description TEXT NOT NULL,
+              image_url TEXT,
               status VARCHAR(20) CHECK (status IN ('pending', 'under_review', 'resolved', 'dismissed')) DEFAULT 'pending',
               admin_notes TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -237,6 +238,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               subject VARCHAR(255) NOT NULL,
               category VARCHAR(100) NOT NULL,
               message TEXT NOT NULL,
+              image_url TEXT,
               priority VARCHAR(20) CHECK (priority IN ('low', 'medium', 'high', 'urgent')) DEFAULT 'medium',
               status VARCHAR(20) CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
               admin_response TEXT,
@@ -318,6 +320,29 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
           } else {
             console.log("[DB] Usuario administrador ya existe en la base de datos")
           }
+
+          // ── Migraciones automáticas ──────────────────────────────────
+          // Agregan columnas nuevas si no existen (seguro correr múltiples veces)
+          const autoMigrations = [
+            "ALTER TABLE bookings ADD COLUMN sender_name TEXT",
+            "ALTER TABLE bookings ADD COLUMN sender_image TEXT",
+            "ALTER TABLE bookings ADD COLUMN sender_role TEXT",
+            "ALTER TABLE bookings ADD COLUMN message TEXT",
+            "ALTER TABLE bookings ADD COLUMN commission_paid BOOLEAN DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN confirmed_at DATETIME",
+            "ALTER TABLE bookings ADD COLUMN payment_method VARCHAR(50)",
+            "ALTER TABLE bookings ADD COLUMN payment_amount DECIMAL(10,2)",
+            "ALTER TABLE bookings ADD COLUMN payment_date DATETIME",
+            "ALTER TABLE bookings ADD COLUMN payment_reference VARCHAR(50)",
+            "ALTER TABLE bookings ADD COLUMN payment_status VARCHAR(20)",
+            "ALTER TABLE bookings ADD COLUMN event_time TEXT",
+            "ALTER TABLE bookings ADD COLUMN proposed_price DECIMAL(10,2)",
+            "ALTER TABLE reviews ADD COLUMN is_visible BOOLEAN DEFAULT 1",
+          ]
+          for (const migSql of autoMigrations) {
+            try { await _runAsync(newDb, migSql, []) } catch { /* columna ya existe, ok */ }
+          }
+          console.log("[DB] Migraciones automáticas aplicadas")
 
           db = newDb
           initialized = true
