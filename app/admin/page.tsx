@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,8 @@ import {
   Shield, Users, AlertCircle, HelpCircle, CheckCircle, Calendar,
   Star, Eye, EyeOff, Send, MessageSquare, XCircle,
   Check, Clock, Ban, Trash2, Mail, Info, UserX, ExternalLink, X, Image as ImageIcon,
-  UserCheck, AlertTriangle, ChevronRight
+  UserCheck, AlertTriangle, ChevronRight, Crown, Package, MapPin,
+  Zap, Camera, Activity, Music, Building2, Plus
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -50,6 +51,24 @@ export default function AdminPanel() {
     open: false, url: ""
   })
 
+  // Events state
+  const [events, setEvents] = useState<any[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [evImgIdx, setEvImgIdx] = useState<Record<number, number>>({})
+  const [evFilterStatus, setEvFilterStatus] = useState<"all"|"visible"|"hidden">("all")
+  const [evTogglingId, setEvTogglingId] = useState<number|null>(null)
+  const [evDeletingId, setEvDeletingId] = useState<number|null>(null)
+  const [evShowCreate, setEvShowCreate] = useState(false)
+  const [evTitle, setEvTitle] = useState("")
+  const [evDesc, setEvDesc] = useState("")
+  const [evCategory, setEvCategory] = useState("")
+  const [evLocation, setEvLocation] = useState("")
+  const [evDate, setEvDate] = useState("")
+  const [evTime, setEvTime] = useState("")
+  const [evCapacity, setEvCapacity] = useState("")
+  const [evImages, setEvImages] = useState<string[]>([])
+  const [evCreating, setEvCreating] = useState(false)
+
   // Modal de confirmación profesional (reemplaza confirm() del browser)
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean
@@ -79,6 +98,7 @@ export default function AdminPanel() {
     }
     setUser(currentUser)
     loadAllData()
+    loadEvents()
   }, [])
 
   const loadAllData = async () => {
@@ -121,6 +141,72 @@ export default function AdminPanel() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadEvents = async () => {
+    setEventsLoading(true)
+    try {
+      const res = await fetch("/api/events?admin=true")
+      const data = await res.json()
+      setEvents(Array.isArray(data) ? data : [])
+    } catch {}
+    setEventsLoading(false)
+  }
+
+  const handleEvImgNav = (eventId: number, dir: 1 | -1, total: number) => {
+    setEvImgIdx(prev => ({ ...prev, [eventId]: ((prev[eventId] ?? 0) + dir + total) % total }))
+  }
+
+  const handleEvToggle = async (event: any) => {
+    setEvTogglingId(event.id)
+    await fetch("/api/events", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: event.id, is_published: !event.is_published }),
+    })
+    await loadEvents()
+    setEvTogglingId(null)
+  }
+
+  const handleEvDelete = async (id: number) => {
+    if (!confirm("¿Eliminar este evento permanentemente?")) return
+    setEvDeletingId(id)
+    await fetch(`/api/events?id=${id}`, { method: "DELETE" })
+    await loadEvents()
+    setEvDeletingId(null)
+  }
+
+  const handleEvImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    files.slice(0, 5 - evImages.length).forEach(file => {
+      const reader = new FileReader()
+      reader.onload = ev => setEvImages(prev => [...prev, ev.target?.result as string])
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleEvCreate = async () => {
+    if (!evTitle.trim()) return
+    setEvCreating(true)
+    const cu = getCurrentUser()
+    try {
+      await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: cu?.id,
+          title: evTitle, description: evDesc, category: evCategory,
+          location: evLocation, eventDate: evDate, eventTime: evTime,
+          capacity: evCapacity ? Number(evCapacity) : null,
+          images: evImages, createdByAdmin: true
+        }),
+      })
+      setEvShowCreate(false)
+      setEvTitle(""); setEvDesc(""); setEvCategory(""); setEvLocation("")
+      setEvDate(""); setEvTime(""); setEvCapacity(""); setEvImages([])
+      await loadEvents()
+    } catch {}
+    setEvCreating(false)
   }
 
   const sendMessageToUser = async () => {
@@ -366,7 +452,7 @@ export default function AdminPanel() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6 p-1 h-auto"
+          <TabsList className="grid w-full grid-cols-6 mb-6 p-1 h-auto"
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-500">
               <Users className="h-4 w-4 mr-2" /> Usuarios
@@ -382,6 +468,9 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="reviews" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500">
               <Star className="h-4 w-4 mr-2" /> Reseñas
+            </TabsTrigger>
+            <TabsTrigger value="events" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-600 data-[state=active]:to-purple-600">
+              <Zap className="h-4 w-4 mr-2" /> Eventos
             </TabsTrigger>
           </TabsList>
 
@@ -758,6 +847,287 @@ export default function AdminPanel() {
               </div>
             ))}
           </TabsContent>
+
+          {/* ════════════════════ EVENTOS ════════════════════ */}
+          <TabsContent value="events">
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Gestión de Eventos</h3>
+                  <p className="text-white/40 text-sm mt-0.5">
+                    {events.length} eventos · {events.filter(e=>e.is_published).length} visibles · {events.filter(e=>!e.is_published).length} ocultos
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* filtro */}
+                  <div className="flex rounded-lg overflow-hidden text-xs" style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
+                    {(["all","visible","hidden"] as const).map(f => (
+                      <button key={f} onClick={() => setEvFilterStatus(f)}
+                        className="px-3 py-1.5 font-semibold transition-colors"
+                        style={{ background: evFilterStatus===f ? "linear-gradient(135deg,#B744B8,#7a1a8a)" : "transparent", color: evFilterStatus===f ? "white" : "rgba(255,255,255,0.4)" }}>
+                        {f==="all"?"Todos":f==="visible"?"Visibles":"Ocultos"}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => setEvShowCreate(s=>!s)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all"
+                    style={{ background: "linear-gradient(135deg,#001C55,#B744B8)" }}>
+                    <Plus className="h-4 w-4" />
+                    {evShowCreate ? "Cancelar" : "Publicar Evento"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Create form */}
+              {evShowCreate && (
+                <div className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <p className="font-bold text-white text-sm flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-purple-400" /> Nuevo evento (publicado como Admin)
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      { label:"Título *", val:evTitle, set:setEvTitle, ph:"Nombre del evento" },
+                      { label:"Lugar",    val:evLocation, set:setEvLocation, ph:"Ej: Palermo, CABA" },
+                    ].map(f => (
+                      <div key={f.label}>
+                        <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">{f.label}</label>
+                        <input value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
+                          className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                          style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Categoría</label>
+                      <select value={evCategory} onChange={e=>setEvCategory(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
+                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }}>
+                        <option value="">Seleccioná</option>
+                        {["Música en vivo","DJ","Teatro","Humor","Danza","Arte","Feria","Otro"].map(c=>(
+                          <option key={c} value={c} style={{background:"#0d1022"}}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Capacidad</label>
+                      <input type="number" value={evCapacity} onChange={e=>setEvCapacity(e.target.value)} placeholder="N° personas"
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none"
+                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Fecha</label>
+                      <input type="date" value={evDate} onChange={e=>setEvDate(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
+                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", colorScheme:"dark" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Horario</label>
+                      <input type="time" value={evTime} onChange={e=>setEvTime(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
+                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", colorScheme:"dark" }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Descripción</label>
+                    <textarea value={evDesc} onChange={e=>setEvDesc(e.target.value)} rows={3} placeholder="Info del evento..."
+                      className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none resize-none"
+                      style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Imágenes / Flyer (hasta 5)</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {evImages.map((img,i) => (
+                        <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden">
+                          <img src={img} alt="" className="w-full h-full object-cover" />
+                          <button onClick={() => setEvImages(prev=>prev.filter((_,idx)=>idx!==i))}
+                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-white">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {evImages.length < 5 && (
+                        <label className="w-16 h-16 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                          style={{ border:"2px dashed rgba(255,255,255,0.15)" }}>
+                          <Camera className="h-5 w-5 text-white/40" />
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={handleEvImageChange} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleEvCreate} disabled={evCreating || !evTitle.trim()}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
+                      style={{ background:"linear-gradient(135deg,#001C55,#B744B8)" }}>
+                      {evCreating ? "Publicando..." : "Publicar Evento"}
+                    </button>
+                    <button onClick={() => setEvShowCreate(false)}
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white/50 hover:text-white transition-colors"
+                      style={{ border:"1px solid rgba(255,255,255,0.1)" }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Events Grid */}
+              {eventsLoading ? (
+                <div className="text-center py-12 text-white/40">Cargando eventos...</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {events
+                    .filter(e => evFilterStatus==="all" ? true : evFilterStatus==="visible" ? e.is_published : !e.is_published)
+                    .map(event => {
+                      const imgs: string[] = (() => {
+                        try { const p=JSON.parse(event.images||"[]"); return p.length?p:event.image_url?[event.image_url]:[] }
+                        catch { return event.image_url?[event.image_url]:[] }
+                      })()
+                      const curImg = evImgIdx[event.id] ?? 0
+                      const creatorInitial = ((event.first_name?.[0]??"")+(event.last_name?.[0]??"")).toUpperCase()||"?"
+                      const creatorName = event.creator_name || `${event.first_name??""} ${event.last_name??""}`.trim() || "Usuario"
+
+                      return (
+                        <div key={event.id}
+                          className={`rounded-2xl overflow-hidden transition-all hover:shadow-xl hover:-translate-y-0.5 ${!event.is_published?"opacity-55":""}`}
+                          style={{ background:"rgba(255,255,255,0.04)", border: event.is_published ? "1px solid rgba(255,255,255,0.1)" : "1px dashed rgba(255,255,255,0.15)" }}>
+
+                          {/* Image */}
+                          <div className="relative h-44 overflow-hidden" style={{ background:"linear-gradient(135deg,rgba(183,68,184,0.2),rgba(0,28,85,0.3))" }}>
+                            {imgs.length>0 ? (
+                              <>
+                                <img src={imgs[curImg]} alt={event.title} className="w-full h-full object-cover" />
+                                {imgs.length>1 && (
+                                  <>
+                                    <button onClick={()=>handleEvImgNav(event.id,-1,imgs.length)}
+                                      className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-all">
+                                      <ChevronRight className="h-4 w-4 rotate-180" />
+                                    </button>
+                                    <button onClick={()=>handleEvImgNav(event.id,1,imgs.length)}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-all">
+                                      <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                      {imgs.map((_:any,i:number) => (
+                                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i===curImg?"bg-white":"bg-white/40"}`} />
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Calendar className="h-14 w-14 text-white/10" />
+                              </div>
+                            )}
+                            {/* badges */}
+                            <div className="absolute top-2 left-2 flex flex-col gap-1">
+                              {event.category && (
+                                <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white"
+                                  style={{ background:"linear-gradient(135deg,#B744B8,#7a1a8a)" }}>
+                                  {event.category}
+                                </span>
+                              )}
+                              {event.created_by_admin ? (
+                                <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-500 text-white">Admin</span>
+                              ) : null}
+                            </div>
+                            <div className="absolute top-2 right-2">
+                              <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${event.is_published?"bg-green-500 text-white":"bg-gray-700 text-white/80"}`}>
+                                {event.is_published?"Visible":"Oculto"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-4">
+                            <h4 className="font-bold text-white text-sm mb-1.5 line-clamp-2 leading-snug">{event.title}</h4>
+                            {event.description && (
+                              <p className="text-white/45 text-xs mb-3 line-clamp-2 leading-relaxed">{event.description}</p>
+                            )}
+
+                            <div className="space-y-1.5 mb-3">
+                              {event.event_date && (
+                                <div className="flex items-center gap-1.5 text-xs text-white/50">
+                                  <Calendar className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                                  <span>
+                                    {(() => { try { const [y,m,d]=event.event_date.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"}) } catch { return event.event_date } })()}
+                                    {event.event_time ? ` · ${event.event_time}` : ""}
+                                  </span>
+                                </div>
+                              )}
+                              {event.location && (
+                                <div className="flex items-center gap-1.5 text-xs text-white/50">
+                                  <MapPin className="h-3 w-3 text-green-400 flex-shrink-0" />
+                                  <span className="truncate">{event.location}</span>
+                                </div>
+                              )}
+                              {event.capacity && (
+                                <div className="flex items-center gap-1.5 text-xs text-white/50">
+                                  <Users className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                                  <span>Capacidad: {event.capacity} personas</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Creator info */}
+                            <div className="flex items-center gap-2 py-2.5 mb-3" style={{ borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                style={{ background:"linear-gradient(135deg,#B744B8,#001C55)" }}>
+                                {creatorInitial}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-white truncate">{creatorName}</p>
+                                {event.creator_email && (
+                                  <p className="text-xs text-white/35 truncate">{event.creator_email}</p>
+                                )}
+                              </div>
+                              {event.role && (
+                                <span className="text-xs px-1.5 py-0.5 rounded flex-shrink-0 text-white/50"
+                                  style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)" }}>
+                                  {event.role==="artist"?"Artista":event.role==="owner"?"Local":event.role==="admin"?"Admin":event.role}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex gap-2">
+                              <button onClick={()=>handleEvToggle(event)} disabled={evTogglingId===event.id}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                                style={{
+                                  background: event.is_published ? "rgba(255,255,255,0.06)" : "rgba(34,197,94,0.15)",
+                                  border: event.is_published ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(34,197,94,0.3)",
+                                  color: event.is_published ? "rgba(255,255,255,0.6)" : "#22c55e"
+                                }}>
+                                {evTogglingId===event.id ? (
+                                  <Activity className="h-3.5 w-3.5 animate-spin" />
+                                ) : event.is_published ? (
+                                  <EyeOff className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" />
+                                )}
+                                {event.is_published ? "Ocultar" : "Mostrar"}
+                              </button>
+                              <button onClick={()=>handleEvDelete(event.id)} disabled={evDeletingId===event.id}
+                                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                                style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)", color:"#f87171" }}>
+                                {evDeletingId===event.id ? <Activity className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                                Eliminar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                  })}
+                  {events.filter(e => evFilterStatus==="all" ? true : evFilterStatus==="visible" ? e.is_published : !e.is_published).length === 0 && (
+                    <div className="col-span-full text-center py-16 text-white/30">
+                      <Calendar className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p className="font-semibold">{evFilterStatus==="hidden"?"No hay eventos ocultos":evFilterStatus==="visible"?"No hay eventos visibles":"No hay eventos publicados aún"}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
         </Tabs>
       </div>
 
@@ -977,6 +1347,56 @@ export default function AdminPanel() {
                   </div>
                 </div>
               )}
+
+              {/* Suscripción */}
+              {(() => {
+                const sub = detailsModal.user.subscription
+                const subDays = sub?.days_remaining ?? -1
+                return (
+                  <div>
+                    <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+                      <Crown className="h-5 w-5 text-purple-400" />
+                      Suscripción
+                    </h4>
+                    {sub ? (
+                      <div className="space-y-3">
+                        {/* Plan */}
+                        <div className="flex items-center gap-3 p-4 rounded-xl"
+                          style={{ background: "linear-gradient(135deg, rgba(183,68,184,0.15), rgba(0,28,85,0.15))", border: "1px solid rgba(183,68,184,0.3)" }}>
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
+                            <Crown className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-white font-bold text-sm">{sub.plan_name}</p>
+                            <p className="text-white/50 text-xs">{sub.price}/mes · {sub.payment_method || "—"}</p>
+                          </div>
+                        </div>
+                        {/* Días restantes */}
+                        <div className={`flex items-center gap-3 p-3 rounded-xl ${subDays > 7 ? "bg-green-500/10 border border-green-500/25" : subDays > 0 ? "bg-amber-500/10 border border-amber-500/25" : "bg-red-500/10 border border-red-500/25"}`}>
+                          <Clock className={`h-4 w-4 flex-shrink-0 ${subDays > 7 ? "text-green-400" : subDays > 0 ? "text-amber-400" : "text-red-400"}`} />
+                          <div>
+                            <p className={`font-bold text-sm ${subDays > 7 ? "text-green-300" : subDays > 0 ? "text-amber-300" : "text-red-300"}`}>
+                              {subDays > 0 ? `${subDays} días restantes` : subDays === 0 ? "Expira hoy" : "Suscripción expirada"}
+                            </p>
+                            <p className="text-white/40 text-xs">
+                              Vence: {new Date(sub.expires_at).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)" }}>
+                        <Package className="h-5 w-5 text-white/25" />
+                        <div>
+                          <p className="text-white/40 font-semibold text-sm">Sin suscripción activa</p>
+                          <p className="text-white/25 text-xs">Plan gratuito</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Reseñas */}
               {detailsModal.user.reviews && detailsModal.user.reviews.length > 0 && (

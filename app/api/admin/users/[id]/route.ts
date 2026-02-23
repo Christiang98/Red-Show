@@ -125,6 +125,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         reviews,
         artist_profile: artistProfile ?? null,
         owner_profile: ownerProfile ?? null,
+        subscription: await (async () => {
+          try {
+            const { getAsync: ga } = await import("@/lib/db")
+            return await ga(
+              `SELECT *, CAST((julianday(expires_at) - julianday('now')) AS INTEGER) as days_remaining
+               FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')
+               ORDER BY expires_at DESC LIMIT 1`,
+              [userId]
+            ) ?? null
+          } catch { return null }
+        })(),
       },
     })
   } catch (error) {

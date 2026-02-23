@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
@@ -8,9 +9,11 @@ import {
   Music, MapPin, Calendar, Users, Search, MessageSquare, Shield,
   Star, TrendingUp, CheckCircle, ArrowRight, Zap, Crown, Sparkles
 } from "lucide-react"
+import { SubscriptionModal } from "@/components/subscriptions/subscription-modal"
 
 export default function LandingPage() {
   const router = useRouter()
+  const [selectedPlan, setSelectedPlan] = useState<any>(null)
 
   const artistPlans = [
     {
@@ -18,6 +21,7 @@ export default function LandingPage() {
       price: "GRATIS",
       popular: false,
       gradient: "from-gray-600 to-gray-500",
+      planType: "artist",
       features: [
         "Perfil básico",
         "3 fotos",
@@ -31,6 +35,7 @@ export default function LandingPage() {
       price: "$8.000/mes",
       popular: true,
       gradient: "from-blue-600 to-purple-600",
+      planType: "artist",
       features: [
         "Perfil destacado",
         "Fotos ilimitadas + videos",
@@ -46,6 +51,7 @@ export default function LandingPage() {
       price: "$12.000/mes",
       popular: false,
       gradient: "from-purple-600 to-pink-600",
+      planType: "artist",
       features: [
         "Todo del Plan Pro +",
         "Calendario de disponibilidad público",
@@ -63,6 +69,7 @@ export default function LandingPage() {
       price: "GRATIS",
       popular: false,
       gradient: "from-gray-600 to-gray-500",
+      planType: "owner",
       features: [
         "Perfil básico del espacio",
         "5 fotos",
@@ -76,6 +83,7 @@ export default function LandingPage() {
       price: "$8.000/mes",
       popular: true,
       gradient: "from-green-600 to-teal-600",
+      planType: "owner",
       features: [
         "Perfil destacado",
         "Fotos + videos ilimitados",
@@ -91,6 +99,7 @@ export default function LandingPage() {
       price: "$12.000/mes",
       popular: false,
       gradient: "from-orange-600 to-red-600",
+      planType: "owner",
       features: [
         "Todo del Pro +",
         "Múltiples espacios en un perfil",
@@ -221,7 +230,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Button
-                onClick={() => router.push("/register")}
+                onClick={() => plan.name === "Básico" ? router.push("/register") : setSelectedPlan(plan)}
                 className={`w-full h-12 font-bold border-0 ${plan.popular ? `bg-gradient-to-r ${plan.gradient}` : 'bg-white/10'}`}>
                 {plan.name === "Básico" ? "Comenzar Gratis" : "Suscribirse"}
               </Button>
@@ -273,7 +282,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Button
-                onClick={() => router.push("/register")}
+                onClick={() => plan.name === "Básico" ? router.push("/register") : setSelectedPlan(plan)}
                 className={`w-full h-12 font-bold border-0 ${plan.popular ? `bg-gradient-to-r ${plan.gradient}` : 'bg-white/10'}`}>
                 {plan.name === "Básico" ? "Comenzar Gratis" : "Suscribirse"}
               </Button>
@@ -306,6 +315,14 @@ export default function LandingPage() {
           <p className="text-white/40 text-sm">© 2026 Red Show. Todos los derechos reservados.</p>
         </div>
       </footer>
+      {/* Subscription Modal */}
+      {selectedPlan && (
+        <SubscriptionModal
+          plan={selectedPlan}
+          onClose={() => setSelectedPlan(null)}
+          onSuccess={() => { setSelectedPlan(null); router.push("/dashboard") }}
+        />
+      )}
     </div>
   )
 }

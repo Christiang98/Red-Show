@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
-import { BarChart3, Users, BookOpen, MessageSquare, Star, Calendar } from "lucide-react"
+import { BarChart3, Users, BookOpen, MessageSquare, Star, Calendar, Crown, Clock } from "lucide-react"
 import useSWR from "swr"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -25,8 +25,10 @@ export default function DashboardPage() {
   }, [router])
 
   const { data: bookingsData } = useSWR(user ? `/api/bookings?userId=${user.id}` : null, fetcher)
-
   const { data: messagesData } = useSWR(user ? `/api/messages?userId=${user.id}` : null, fetcher)
+  const { data: subscriptionData, mutate: refetchSub } = useSWR(
+    user ? `/api/subscriptions?userId=${user.id}` : null, fetcher
+  )
 
   if (!user) {
     return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
@@ -35,6 +37,7 @@ export default function DashboardPage() {
   const totalBookings = bookingsData?.length || 0
   const unreadMessages = messagesData?.filter((m: any) => !m.read && m.receiver_id === user.id).length || 0
   const acceptedBookings = bookingsData?.filter((b: any) => b.status === "accepted").length || 0
+  const subscription = subscriptionData?.subscription
 
   const stats = [
     { label: "Contrataciones", value: totalBookings, icon: Calendar },
@@ -80,6 +83,14 @@ export default function DashboardPage() {
       color: "bg-orange-500/20 border-orange-400/30 hover:bg-orange-500/30",
       iconColor: "text-orange-400",
     },
+    {
+      title: "Eventos",
+      description: "Descubrí y publicá eventos de la comunidad",
+      href: "/events",
+      icon: Calendar,
+      color: "bg-pink-500/20 border-pink-400/30 hover:bg-pink-500/30",
+      iconColor: "text-pink-400",
+    },
   ]
 
   return (
@@ -94,6 +105,30 @@ export default function DashboardPage() {
           </h1>
           <p className="text-primary-foreground/80">Gestiona tu perfil y conecta con otros usuarios en Red Show</p>
         </div>
+
+        {/* Active Subscription Banner */}
+        {subscription && (
+          <div className="mb-8 rounded-2xl p-5 flex items-center justify-between gap-4"
+            style={{ background: "linear-gradient(135deg, rgba(183,68,184,0.15), rgba(0,28,85,0.2))", border: "1px solid rgba(183,68,184,0.3)" }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
+                <Crown className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">Plan {subscription.plan_name} activo</p>
+                <p className="text-sm text-muted-foreground">{subscription.plan_type}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <Clock className="h-4 w-4 text-purple-400" />
+              <span className="font-bold text-foreground text-sm">
+                {subscription.days_remaining > 0 ? `${subscription.days_remaining} días restantes` : "Expira hoy"}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -125,7 +160,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div>
           <h2 className="text-2xl font-bold text-primary mb-6">Acciones Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action, idx) => {
               const Icon = action.icon
               return (
@@ -147,7 +182,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity - Últimas contrataciones */}
+        {/* Recent Activity */}
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-foreground mb-6">Actividad Reciente</h2>
           <Card className="p-6 border-2 border-border/50 bg-card/80 backdrop-blur">
