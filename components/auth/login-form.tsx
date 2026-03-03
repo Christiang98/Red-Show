@@ -115,6 +115,13 @@ export function LoginForm() {
               Regístrate aquí
             </Link>
           </p>
+          <div className="pt-2">
+            <Link href="/">
+              <Button variant="outline" className="w-full bg-transparent">
+                ← Volver al Inicio
+              </Button>
+            </Link>
+          </div>
         </div>
       </Card>
     </div>

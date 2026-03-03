@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { X, CreditCard, Smartphone, CheckCircle, Loader2, Lock, Shield, Crown, UserCheck, UserPlus, LogIn } from "lucide-react"
+import { X, CreditCard, Smartphone, CheckCircle, Loader2, Lock, Shield, Crown, UserPlus, LogIn, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { login, register, getCurrentUser } from "@/lib/auth"
+import { validatePassword } from "@/lib/password-validator"
 
 interface Plan {
   name: string
@@ -66,6 +67,8 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
   const [regLastName, setRegLastName] = useState("")
   const [regEmail, setRegEmail] = useState("")
   const [regPassword, setRegPassword] = useState("")
+  const [regConfirmPassword, setRegConfirmPassword] = useState("")
+  const [regPhone, setRegPhone] = useState("")
   const [regRole, setRegRole] = useState<"artist" | "owner">("artist")
   const [regLoading, setRegLoading] = useState(false)
 
@@ -76,6 +79,11 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
   const [cardCvv, setCardCvv] = useState("")
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({})
 
+  // Determine the required role for this plan
+  const planRequiredRole: "artist" | "owner" | null =
+    plan.planType === "artist" ? "artist" :
+    plan.planType === "owner" ? "owner" : null
+
   const handleHasAccount = (has: boolean) => {
     // Check if already logged in
     const currentUser = getCurrentUser()
@@ -83,6 +91,10 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
       setLoggedUser(currentUser)
       setStep("payment-method")
       return
+    }
+    if (!has) {
+      // When registering, lock role to plan's required role
+      if (planRequiredRole) setRegRole(planRequiredRole)
     }
     setStep(has ? "login" : "register")
   }
@@ -99,6 +111,16 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
       toast({ title: "Error al iniciar sesión", description: result.message, variant: "destructive" })
       return
     }
+    // Check role compatibility
+    if (planRequiredRole && result.user?.role !== planRequiredRole) {
+      const roleLabel = planRequiredRole === "artist" ? "artista" : "dueño de establecimiento"
+      toast({
+        title: "Plan incompatible con tu cuenta",
+        description: `Este plan es exclusivo para ${roleLabel}s. Tu cuenta tiene un rol diferente.`,
+        variant: "destructive"
+      })
+      return
+    }
     // Save to localStorage
     localStorage.setItem("authToken", result.token || "")
     localStorage.setItem("userData", JSON.stringify(result.user))
@@ -107,12 +129,25 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
   }
 
   const handleRegister = async () => {
-    if (!regFirstName || !regLastName || !regEmail || !regPassword) {
+    if (!regFirstName || !regLastName || !regEmail || !regPassword || !regConfirmPassword || !regPhone) {
       toast({ title: "Completá todos los campos", variant: "destructive" })
       return
     }
+    if (regPassword !== regConfirmPassword) {
+      toast({ title: "Las contraseñas no coinciden", variant: "destructive" })
+      return
+    }
+    const passwordValidation = validatePassword(regPassword)
+    if (!passwordValidation.isValid) {
+      toast({
+        title: "Contraseña insegura",
+        description: "Debe tener al menos 8 caracteres y cumplir con al menos 4 de los 5 requisitos de seguridad.",
+        variant: "destructive"
+      })
+      return
+    }
     setRegLoading(true)
-    const result = await register({ email: regEmail, password: regPassword, firstName: regFirstName, lastName: regLastName, role: regRole })
+    const result = await register({ email: regEmail, password: regPassword, firstName: regFirstName, lastName: regLastName, role: regRole, phone: regPhone })
     setRegLoading(false)
     if (!result.success) {
       toast({ title: "Error al registrarse", description: result.message, variant: "destructive" })
@@ -213,40 +248,67 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
         <div className="px-6 pb-6">
 
           {/* ━━━ STEP: account-check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {step === "account-check" && (
-            <div className="mt-6 space-y-4">
-              <div className="text-center mb-6">
-                <p className="text-white/70 text-sm">Para suscribirte al plan <strong className="text-white">{plan.name}</strong>, necesitás tener una cuenta en Red Show.</p>
+          {step === "account-check" && (() => {
+            const currentUser = getCurrentUser()
+            if (currentUser && planRequiredRole && currentUser.role !== planRequiredRole) {
+              const planRoleLabel = planRequiredRole === "artist" ? "artistas" : "dueños de establecimiento"
+              return (
+                <div className="mt-6 space-y-4">
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(239,68,68,0.15)", border: "2px solid rgba(239,68,68,0.3)" }}>
+                      <AlertCircle className="h-7 w-7 text-red-400" />
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-white text-base mb-2">Plan incompatible</p>
+                      <p className="text-white/60 text-sm leading-relaxed">
+                        Este plan es exclusivo para <strong className="text-white">{planRoleLabel}</strong>.<br />
+                        Tu cuenta actual no puede adquirirlo.
+                      </p>
+                    </div>
+                    <button onClick={onClose}
+                      className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white/60 hover:text-white border border-white/10 hover:bg-white/5 transition-all">
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+            return (
+              <div className="mt-6 space-y-4">
+                <div className="text-center mb-6">
+                  <p className="text-white/70 text-sm">Para suscribirte al plan <strong className="text-white">{plan.name}</strong>, necesitás tener una cuenta en Red Show.</p>
+                </div>
+                <p className="text-white/50 text-sm font-semibold text-center">¿Ya tenés cuenta?</p>
+                <button
+                  onClick={() => handleHasAccount(true)}
+                  className="w-full flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-left"
+                  style={{ background: "rgba(183,68,184,0.1)", border: "1px solid rgba(183,68,184,0.3)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
+                    <LogIn className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-sm">Sí, tengo cuenta</p>
+                    <p className="text-white/40 text-xs">Iniciar sesión y continuar</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleHasAccount(false)}
+                  className="w-full flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-left"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <UserPlus className="h-5 w-5 text-white/60" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white/80 text-sm">No, quiero registrarme</p>
+                    <p className="text-white/40 text-xs">Crear cuenta y suscribirme</p>
+                  </div>
+                </button>
               </div>
-              <p className="text-white/50 text-sm font-semibold text-center">¿Ya tenés cuenta?</p>
-              <button
-                onClick={() => handleHasAccount(true)}
-                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-left"
-                style={{ background: "rgba(183,68,184,0.1)", border: "1px solid rgba(183,68,184,0.3)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
-                  <LogIn className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-bold text-white text-sm">Sí, tengo cuenta</p>
-                  <p className="text-white/40 text-xs">Iniciar sesión y continuar</p>
-                </div>
-              </button>
-              <button
-                onClick={() => handleHasAccount(false)}
-                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-left"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.06)" }}>
-                  <UserPlus className="h-5 w-5 text-white/60" />
-                </div>
-                <div>
-                  <p className="font-bold text-white/80 text-sm">No, quiero registrarme</p>
-                  <p className="text-white/40 text-xs">Crear cuenta y suscribirme</p>
-                </div>
-              </button>
-            </div>
-          )}
+            )
+          })()}
 
           {/* ━━━ STEP: login ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {step === "login" && (
@@ -268,43 +330,90 @@ export function SubscriptionModal({ plan, onClose, onSuccess }: SubscriptionModa
           )}
 
           {/* ━━━ STEP: register ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {step === "register" && (
-            <div className="mt-6 space-y-3">
-              <p className="text-white/60 text-sm text-center mb-4">Creá tu cuenta gratis</p>
-              <div className="grid grid-cols-2 gap-3">
-                <InputField label="Nombre" placeholder="Juan" value={regFirstName} onChange={setRegFirstName} />
-                <InputField label="Apellido" placeholder="Pérez" value={regLastName} onChange={setRegLastName} />
-              </div>
-              <InputField label="Email" placeholder="tu@email.com" value={regEmail} onChange={setRegEmail} type="email" />
-              <InputField label="Contraseña" placeholder="Mínimo 6 caracteres" value={regPassword} onChange={setRegPassword} type="password" />
-              <div>
-                <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Soy...</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[{ id: "artist", label: "Artista" }, { id: "owner", label: "Propietario" }].map(r => (
-                    <button key={r.id} onClick={() => setRegRole(r.id as any)}
-                      className="py-2.5 rounded-xl text-sm font-semibold transition-all"
-                      style={{
-                        background: regRole === r.id ? "rgba(183,68,184,0.15)" : "rgba(255,255,255,0.04)",
-                        border: regRole === r.id ? "1px solid rgba(183,68,184,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                        color: regRole === r.id ? "white" : "rgba(255,255,255,0.6)"
-                      }}>
-                      {r.label}
-                    </button>
-                  ))}
+          {step === "register" && (() => {
+            const pwCheck = validatePassword(regPassword)
+            const pwStrengthColor = pwCheck.strength === "strong" ? "#22c55e" : pwCheck.strength === "medium" ? "#eab308" : "#ef4444"
+            const pwStrengthWidth = pwCheck.strength === "strong" ? "100%" : pwCheck.strength === "medium" ? "66%" : regPassword ? "33%" : "0%"
+            return (
+              <div className="mt-6 space-y-3">
+                <p className="text-white/60 text-sm text-center mb-4">Creá tu cuenta gratis</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <InputField label="Nombre" placeholder="Juan" value={regFirstName} onChange={setRegFirstName} />
+                  <InputField label="Apellido" placeholder="Pérez" value={regLastName} onChange={setRegLastName} />
                 </div>
+                <InputField label="Email" placeholder="tu@email.com" value={regEmail} onChange={setRegEmail} type="email" />
+                <InputField label="Teléfono" placeholder="+54 9 1234 56789" value={regPhone} onChange={setRegPhone} type="tel" />
+                <div>
+                  <InputField label="Contraseña" placeholder="Mínimo 8 caracteres" value={regPassword} onChange={setRegPassword} type="password" />
+                  {regPassword && (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/40">Seguridad</span>
+                        <span className="text-xs font-medium" style={{ color: pwStrengthColor }}>{pwCheck.message}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                        <div className="h-full rounded-full transition-all duration-300" style={{ width: pwStrengthWidth, background: pwStrengthColor }} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 pt-1">
+                        {[
+                          { ok: pwCheck.checks.minLength, text: "8+ caracteres" },
+                          { ok: pwCheck.checks.hasUppercase, text: "Mayúscula" },
+                          { ok: pwCheck.checks.hasLowercase, text: "Minúscula" },
+                          { ok: pwCheck.checks.hasNumber, text: "Número" },
+                          { ok: pwCheck.checks.hasSpecialChar, text: "Carácter especial" },
+                        ].map(({ ok, text }) => (
+                          <div key={text} className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: ok ? "#22c55e" : "rgba(255,255,255,0.2)" }} />
+                            <span className="text-xs" style={{ color: ok ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>{text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <InputField label="Confirmar contraseña" placeholder="••••••••" value={regConfirmPassword} onChange={setRegConfirmPassword} type="password" />
+                  {regConfirmPassword && regPassword !== regConfirmPassword && (
+                    <p className="text-red-400 text-xs mt-1">Las contraseñas no coinciden</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Tipo de cuenta</label>
+                  {planRequiredRole ? (
+                    <div className="py-2.5 px-4 rounded-xl text-sm font-semibold text-center"
+                      style={{ background: "rgba(183,68,184,0.15)", border: "1px solid rgba(183,68,184,0.5)", color: "white" }}>
+                      {planRequiredRole === "artist" ? "🎤 Artista" : "🏢 Dueño de Establecimiento"}
+                      <p className="text-white/40 text-xs font-normal mt-0.5">Requerido por este plan</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {[{ id: "artist", label: "Artista" }, { id: "owner", label: "Propietario" }].map(r => (
+                        <button key={r.id} onClick={() => setRegRole(r.id as any)}
+                          className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                          style={{
+                            background: regRole === r.id ? "rgba(183,68,184,0.15)" : "rgba(255,255,255,0.04)",
+                            border: regRole === r.id ? "1px solid rgba(183,68,184,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                            color: regRole === r.id ? "white" : "rgba(255,255,255,0.6)"
+                          }}>
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Button onClick={handleRegister} disabled={regLoading}
+                  className="w-full h-12 font-bold border-0 disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
+                  {regLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                  Crear cuenta y continuar
+                </Button>
+                <button onClick={() => setStep("account-check")}
+                  className="w-full text-center text-white/40 text-sm hover:text-white/70 transition-colors">
+                  ← Volver
+                </button>
               </div>
-              <Button onClick={handleRegister} disabled={regLoading}
-                className="w-full h-12 font-bold border-0 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
-                {regLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
-                Crear cuenta y continuar
-              </Button>
-              <button onClick={() => setStep("account-check")}
-                className="w-full text-center text-white/40 text-sm hover:text-white/70 transition-colors">
-                ← Volver
-              </button>
-            </div>
-          )}
+            )
+          })()}
 
           {/* ━━━ STEP: payment-method ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {step === "payment-method" && (
