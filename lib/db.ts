@@ -176,7 +176,7 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               sender_name VARCHAR(255),
               sender_image TEXT,
               sender_role VARCHAR(50),
-              status VARCHAR(20) CHECK (status IN ('pending', 'matched', 'confirmed', 'rejected', 'completed', 'cancelled', 'accepted')) DEFAULT 'pending',
+              status VARCHAR(20) CHECK (status IN ('pending', 'negotiating', 'matched', 'confirmed', 'rejected', 'completed', 'cancelled', 'accepted')) DEFAULT 'pending',
               price DECIMAL(10,2),
               commission_paid BOOLEAN DEFAULT 0,
               confirmed_at DATETIME,
@@ -337,10 +337,68 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
             "ALTER TABLE bookings ADD COLUMN payment_status VARCHAR(20)",
             "ALTER TABLE bookings ADD COLUMN event_time TEXT",
             "ALTER TABLE bookings ADD COLUMN proposed_price DECIMAL(10,2)",
+            "ALTER TABLE bookings ADD COLUMN event_time_end TEXT",
+            "ALTER TABLE bookings ADD COLUMN event_type TEXT",
+            "ALTER TABLE bookings ADD COLUMN estimated_duration TEXT",
+            "ALTER TABLE bookings ADD COLUMN estimated_guests INTEGER",
+            "ALTER TABLE bookings ADD COLUMN accepted_by_artist BOOLEAN DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN accepted_by_owner BOOLEAN DEFAULT 0",
+            "ALTER TABLE bookings ADD COLUMN last_action_by INTEGER",
             "ALTER TABLE reviews ADD COLUMN is_visible BOOLEAN DEFAULT 1",
+            "ALTER TABLE users ADD COLUMN is_sanctioned BOOLEAN DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN sanction_reason TEXT",
+            "ALTER TABLE users ADD COLUMN sanction_start DATETIME",
+            "ALTER TABLE users ADD COLUMN sanction_end DATETIME",
           ]
           for (const migSql of autoMigrations) {
             try { await _runAsync(newDb, migSql, []) } catch { /* columna ya existe, ok */ }
+          }
+          // ── Auto-reparar CHECK constraint si es versión vieja (sin 'negotiating') ──
+          try {
+            const tbl = await _getAsync(newDb, "SELECT sql FROM sqlite_master WHERE type='table' AND name='bookings'", [])
+            if (tbl?.sql && !tbl.sql.includes("'negotiating'")) {
+              console.log("[DB] Detectado CHECK constraint viejo — migrando tabla bookings...")
+              await _runAsync(newDb, "PRAGMA foreign_keys = OFF", [])
+              await _runAsync(newDb, "ALTER TABLE bookings RENAME TO bookings_old_constraint", [])
+              await _execAsync(newDb, `CREATE TABLE bookings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                artist_id INTEGER NOT NULL, owner_id INTEGER NOT NULL, event_id INTEGER,
+                title VARCHAR(255), description TEXT, booking_date DATETIME, event_date DATE,
+                message TEXT, sender_name TEXT, sender_image TEXT, sender_role TEXT,
+                status VARCHAR(20) CHECK (status IN (
+                  'pending','negotiating','matched','confirmed','accepted','rejected','completed','cancelled'
+                )) DEFAULT 'pending',
+                price DECIMAL(10,2), proposed_price DECIMAL(10,2),
+                commission_paid BOOLEAN DEFAULT 0, confirmed_at DATETIME,
+                payment_method VARCHAR(50), payment_amount DECIMAL(10,2),
+                payment_date DATETIME, payment_reference VARCHAR(50), payment_status VARCHAR(20),
+                event_time TEXT, event_time_end TEXT, event_type TEXT,
+                estimated_duration TEXT, estimated_guests INTEGER,
+                accepted_by_artist BOOLEAN DEFAULT 0, accepted_by_owner BOOLEAN DEFAULT 0,
+                last_action_by INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (artist_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+              )`)
+              // Copiar datos existentes — mapear 'accepted' viejo a 'matched'
+              await _runAsync(newDb, `INSERT INTO bookings
+                SELECT id, artist_id, owner_id, event_id, title, description,
+                  booking_date, event_date, message, sender_name, sender_image, sender_role,
+                  CASE status WHEN 'accepted' THEN 'matched' ELSE status END,
+                  price, proposed_price, commission_paid, confirmed_at,
+                  payment_method, payment_amount, payment_date, payment_reference, payment_status,
+                  event_time, event_time_end, event_type, estimated_duration, estimated_guests,
+                  accepted_by_artist, accepted_by_owner, last_action_by,
+                  created_at, updated_at
+                FROM bookings_old_constraint`, [])
+              await _runAsync(newDb, "DROP TABLE bookings_old_constraint", [])
+              await _runAsync(newDb, "PRAGMA foreign_keys = ON", [])
+              console.log("[DB] CHECK constraint actualizado correctamente")
+            }
+          } catch (constraintErr) {
+            console.error("[DB] Error verificando/actualizando constraint:", constraintErr)
           }
           console.log("[DB] Migraciones automáticas aplicadas")
 

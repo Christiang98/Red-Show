@@ -18,8 +18,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 })
     }
 
-    const existingUser = await getAsync("SELECT id FROM users WHERE email = ?", [email])
+    const existingUser = await getAsync("SELECT id, COALESCE(is_active, 1) as is_active FROM users WHERE email = ?", [email])
     if (existingUser) {
+      if (existingUser.is_active === 0) {
+        console.log("[v0] Intento de registro con email bloqueado:", email)
+        return NextResponse.json({ error: "Este email está bloqueado y no puede usarse para crear una nueva cuenta." }, { status: 400 })
+      }
       console.log("[v0] Email ya registrado:", email)
       return NextResponse.json({ error: "Email ya registrado" }, { status: 400 })
     }

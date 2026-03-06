@@ -117,7 +117,13 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="font-bold text-foreground">Plan {subscription.plan_name} activo</p>
-                <p className="text-sm text-muted-foreground">{subscription.plan_type}</p>
+                <p className="text-sm text-muted-foreground">
+                  {subscription.plan_type === "artist" ? "Artista" :
+                   subscription.plan_type === "owner"  ? "Dueño de establecimiento" :
+                   subscription.plan_type === "premium" ? "Premium" :
+                   subscription.plan_type === "basic"   ? "Básico" :
+                   subscription.plan_type}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl"

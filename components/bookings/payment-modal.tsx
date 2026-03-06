@@ -162,7 +162,7 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
               {[
                 { icon: <User className="h-3.5 w-3.5 text-purple-400" />, label: "Artista", value: artistName },
                 { icon: <Calendar className="h-3.5 w-3.5 text-blue-400" />, label: "Fecha del evento", value: displayDate },
-                { icon: <DollarSign className="h-3.5 w-3.5 text-green-400" />, label: "Tarifa de gestión", value: "USD 3" },
+                { icon: <DollarSign className="h-3.5 w-3.5 text-green-400" />, label: "Tarifa de gestión", value: "$4.200" },
                 { icon: <Shield className="h-3.5 w-3.5 text-yellow-400" />, label: "Concepto", value: "Confirmación de contratación" },
               ].map(({ icon, label, value }) => (
                 <div key={label} className="flex items-center justify-between text-sm">
@@ -177,7 +177,7 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
                  style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
               <span className="text-white/50 text-sm font-semibold">Total a pagar</span>
               <span className="text-2xl font-black" style={{ background: "linear-gradient(135deg, #fff, #B744B8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                USD 3
+                $4.200
               </span>
             </div>
           </div>
@@ -284,7 +284,7 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
                   className="flex-1 h-12 font-bold border-0"
                   style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
                   <Lock className="h-4 w-4 mr-2" />
-                  Pagar USD 3
+                  Pagar $4.200
                 </Button>
               </div>
             </div>
@@ -307,7 +307,7 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white/70 text-xs uppercase tracking-wider">Monto</p>
-                    <p className="text-white font-black text-2xl">USD 3</p>
+                    <p className="text-white font-black text-2xl">$4.200</p>
                   </div>
                   <div className="text-right">
                     <p className="text-white/70 text-xs uppercase tracking-wider">Concepto</p>
@@ -378,7 +378,7 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
                     ["Chat completo habilitado", "✓"],
                     ["Datos de contacto visibles", "✓"],
                     ["Fecha bloqueada", "✓"],
-                    ["Pago registrado (USD 3)", "✓"],
+                    ["Pago registrado ($4.200)", "✓"],
                   ].map(([text, check]) => (
                     <div key={text} className="flex items-center justify-between text-sm">
                       <span className="text-white/60">{text}</span>

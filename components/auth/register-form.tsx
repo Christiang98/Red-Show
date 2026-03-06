@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card"
 import { PasswordStrengthIndicator } from "@/components/auth/password-strength-indicator"
 import { validatePassword } from "@/lib/password-validator"
 
-type UserRole = "owner" | "artist" | "organizer"
+type UserRole = "owner" | "artist"
 
 export function RegisterForm() {
   const [step, setStep] = useState(1)
@@ -72,7 +72,7 @@ export function RegisterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          role: role || "organizer",
+          role: role || "artist",
         }),
       })
 
@@ -122,7 +122,6 @@ export function RegisterForm() {
             {[
               { id: "owner" as UserRole, title: "Dueño de Establecimiento", desc: "Ofrece tu espacio para eventos" },
               { id: "artist" as UserRole, title: "Artista o Emprendedor", desc: "Ofrece tus servicios" },
-              { id: "organizer" as UserRole, title: "Organizador de Eventos", desc: "Busca espacios y servicios" },
             ].map((option) => (
               <button
                 key={option.id}

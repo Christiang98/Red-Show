@@ -5,9 +5,25 @@ async function ensureEventColumns() {
   const migrations = [
     "ALTER TABLE events ADD COLUMN user_id INTEGER",
     "ALTER TABLE events ADD COLUMN event_time TEXT",
+    "ALTER TABLE events ADD COLUMN event_time_end TEXT",
+    "ALTER TABLE events ADD COLUMN is_free BOOLEAN DEFAULT 1",
     "ALTER TABLE events ADD COLUMN images TEXT DEFAULT '[]'",
     "ALTER TABLE events ADD COLUMN is_published BOOLEAN DEFAULT 1",
     "ALTER TABLE events ADD COLUMN created_by_admin BOOLEAN DEFAULT 0",
+    `CREATE TABLE IF NOT EXISTS event_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      user_email TEXT NOT NULL,
+      user_name TEXT,
+      quantity INTEGER DEFAULT 1,
+      unit_price DECIMAL(10,2) DEFAULT 0,
+      total_price DECIMAL(10,2) DEFAULT 0,
+      payment_method TEXT,
+      qr_code TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    )`,
   ]
   for (const sql of migrations) {
     try { await runAsync(sql, []) } catch {}
@@ -61,7 +77,7 @@ export async function POST(request: NextRequest) {
     await ensureEventColumns()
     const body = await request.json()
     const { userId, ownerId, title, description, category, location,
-            eventDate, eventTime, capacity, price, images, createdByAdmin } = body
+            eventDate, eventTime, eventTimeEnd, capacity, price, isFree, images, createdByAdmin } = body
 
     const creatorId = userId || ownerId
     if (!creatorId || !title) {
@@ -70,13 +86,14 @@ export async function POST(request: NextRequest) {
 
     const imagesStr  = JSON.stringify(images || [])
     const firstImage = images?.length > 0 ? images[0] : null
+    const finalPrice = isFree ? 0 : (price || 0)
 
     const result = await runAsync(
       `INSERT INTO events (owner_id, user_id, title, description, category, location,
-        event_date, event_time, capacity, price, image_url, images, is_published, created_by_admin)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+        event_date, event_time, event_time_end, capacity, price, is_free, image_url, images, is_published, created_by_admin)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
       [creatorId, creatorId, title, description, category, location,
-       eventDate, eventTime, capacity, price, firstImage, imagesStr, createdByAdmin ? 1 : 0]
+       eventDate, eventTime, eventTimeEnd, capacity, finalPrice, isFree ? 1 : 0, firstImage, imagesStr, createdByAdmin ? 1 : 0]
     )
 
     return NextResponse.json({ id: result.id, message: "Evento creado" }, { status: 201 })

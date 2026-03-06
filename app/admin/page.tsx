@@ -558,12 +558,14 @@ export default function AdminPanel() {
             <h3 className="text-xl font-bold text-white mb-4">Contrataciones del Sistema</h3>
             {bookings.map((b: any) => {
               const statusLabel: Record<string,string> = {
-                pending:"Pendiente",matched:"Aceptada parcial",accepted:"Aceptada",
-                confirmed:"Confirmada",rejected:"Rechazada",cancelled:"Cancelada",completed:"Finalizada"
+                pending:"Pendiente", negotiating:"En negociación", matched:"Acuerdo alcanzado",
+                accepted:"Confirmada y pagada", confirmed:"Confirmada y pagada",
+                rejected:"Rechazada", cancelled:"Cancelada", completed:"Evento finalizado"
               }
               const statusColor: Record<string,string> = {
-                pending:"bg-yellow-500",matched:"bg-yellow-400",accepted:"bg-green-500",
-                confirmed:"bg-green-600",rejected:"bg-red-500",cancelled:"bg-red-400",completed:"bg-blue-500"
+                pending:"bg-yellow-500", negotiating:"bg-orange-500", matched:"bg-blue-500",
+                accepted:"bg-green-500", confirmed:"bg-green-600",
+                rejected:"bg-red-500", cancelled:"bg-red-400", completed:"bg-purple-500"
               }
               // sender_role indica quién inició: 'owner' = dueño contrató artista; 'artist' = artista se postuló
               const ownerIsInitiator = !b.sender_role || b.sender_role === "owner"
@@ -585,7 +587,7 @@ export default function AdminPanel() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <p className="font-bold text-white text-base">{b.title || "Contratación"}</p>
-                      <p className="text-white/40 text-xs mt-0.5">{fmtD(b.booking_date)}{b.event_time ? ` · ${b.event_time.substring(0,5)} hs` : ""}</p>
+                      <p className="text-white/40 text-xs mt-0.5">{fmtD(b.booking_date)}{b.event_time ? ` · ${b.event_time.substring(0,5)} hs` : ""}{b.event_time_end ? ` → ${b.event_time_end.substring(0,5)} hs` : ""}</p>
                     </div>
                     <Badge className={statusColor[b.status]||"bg-gray-500"}>{statusLabel[b.status]||b.status}</Badge>
                   </div>
@@ -613,7 +615,14 @@ export default function AdminPanel() {
                       </div>
                     </div>
                   </div>
-                  {b.price && <p className="text-xs text-white/50 mb-2">Precio: <span className="text-white font-semibold">${Number(b.price).toLocaleString("es-AR")}</span></p>}
+                  {(b.proposed_price || b.price) && (
+                    <div className="flex flex-wrap gap-4 mb-2 mt-1">
+                      <p className="text-xs text-white/50">Precio vigente: <span className="text-green-400 font-bold">${Number(b.proposed_price || b.price).toLocaleString("es-AR")}</span></p>
+                      {b.negotiation_count > 0 && (
+                        <p className="text-xs text-white/40">{b.negotiation_count} movimiento{b.negotiation_count !== 1 ? "s" : ""} de negociación</p>
+                      )}
+                    </div>
+                  )}
                   {b.message && (
                     <div className="p-3 rounded-lg" style={{ background:"rgba(255,255,255,0.04)" }}>
                       <p className="text-white/50 text-xs mb-1">Mensaje</p>

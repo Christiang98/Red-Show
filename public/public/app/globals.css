@@ -1,0 +1,281 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Paleta de colores mejorada con mejor contraste */
+  --background: #0f1419;
+  --foreground: #f8f9fa;
+  --card: rgba(255,255,255,0.12);
+  --card-foreground: #f8f9fa;
+  --popover: #1a1f2e;
+  --popover-foreground: #f8f9fa;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #ec4899;
+  --secondary-foreground: #ffffff;
+  --muted: rgba(255,255,255,0.15);
+  --muted-foreground: rgba(248,249,250,0.65);
+  --accent: #8b5cf6;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --border: rgba(255,255,255,0.2);
+  --input: rgba(255,255,255,0.12);
+  --ring: #8b5cf6;
+  --chart-1: #3b82f6;
+  --chart-2: #ec4899;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+  --radius: 0.75rem;
+  --sidebar: #1a1f2e;
+  --sidebar-foreground: #f8f9fa;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ec4899;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.15);
+  --sidebar-ring: #8b5cf6;
+}
+
+@theme inline {
+  --font-sans: "Poppins", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    background: linear-gradient(160deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%);
+    background-attachment: fixed;
+    color: #f8f9fa;
+    min-height: 100vh;
+  }
+}
+
+/* ── Ambient blobs con colores más vibrantes ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: -15%;
+  width: 60vw;
+  height: 60vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,0.25) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -10%;
+  right: -10%;
+  width: 50vw;
+  height: 50vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Glass cards con mejor visibilidad ── */
+.glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.1) inset;
+}
+
+/* ── Tabs con mejor contraste ── */
+[role="tablist"] {
+  background: rgba(255,255,255,0.1) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  border-radius: 0.75rem !important;
+  padding: 4px !important;
+}
+[role="tab"] {
+  color: rgba(248,249,250,0.6) !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.2s !important;
+}
+[role="tab"][data-state="active"] {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.4) !important;
+}
+
+/* ── Inputs con mejor visibilidad ── */
+input, textarea, select {
+  background: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+  color: #f8f9fa !important;
+}
+
+/* Estilos específicos para select */
+select {
+  cursor: pointer;
+}
+
+select option {
+  background: #1a1f2e !important;
+  color: #f8f9fa !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(248,249,250,0.45) !important;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(139,92,246,0.6) !important;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.2) !important;
+  outline: none !important;
+}
+
+/* ── Dropdown menus ── */
+[data-radix-popper-content-wrapper] [role="menu"],
+[data-radix-dropdown-menu-content] {
+  background: #1a1f2e !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
+  color: #f8f9fa !important;
+}
+[role="menuitem"]:hover {
+  background: rgba(139,92,246,0.2) !important;
+}
+
+/* ── Dialogs ── */
+[data-radix-dialog-overlay] {
+  background: rgba(0,0,0,0.8) !important;
+  backdrop-filter: blur(4px) !important;
+}
+[data-radix-dialog-content] {
+  background: linear-gradient(135deg, #1a1f2e, #0f1419) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  color: #f8f9fa !important;
+}
+
+/* ── Scrollbar con colores vibrantes ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a78bfa, #60a5fa);
+}
+
+/* ── Page fade in ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: fadeUp 0.35s ease forwards;
+}
+
+/* ── Gradient text con mejor visibilidad ── */
+.gradient-text {
+  background: linear-gradient(135deg, #f8f9fa 30%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Section label con mejor contraste ── */
+.section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(248,249,250,0.5);
+}
+
+/* ── Botones con mejor contraste ── */
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 14px rgba(59,130,246,0.4);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 6px 20px rgba(59,130,246,0.5);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  box-shadow: 0 4px 14px rgba(236,72,153,0.4);
+}
+.btn-secondary:hover {
+  background: linear-gradient(135deg, #db2777, #be185d);
+  box-shadow: 0 6px 20px rgba(236,72,153,0.5);
+}
+
+/* ── Cards hover effect mejorado ── */
+.hover-card-effect {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-card-effect:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(139,92,246,0.3);
+  border-color: rgba(139,92,246,0.5);
+}
+
+/* ── Badge con mejor visibilidad ── */
+.badge-success {
+  background: rgba(16,185,129,0.2);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.3);
+}
+
+.badge-warning {
+  background: rgba(245,158,11,0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,0.3);
+}
+
+.badge-error {
+  background: rgba(239,68,68,0.2);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.badge-info {
+  background: rgba(59,130,246,0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59,130,246,0.3);
+}

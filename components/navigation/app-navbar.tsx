@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, logoutUser } from "@/lib/auth"
-import { Menu, X, MessageSquare, Bell, User, HelpCircle, Shield, Search, Calendar, LogOut } from "lucide-react"
+import { Menu, X, MessageSquare, Bell, User, HelpCircle, Shield, Search, Calendar, LogOut, Ticket } from "lucide-react"
 import useSWR from "swr"
 import {
   DropdownMenu,
@@ -73,6 +73,13 @@ export function AppNavbar() {
             >
               <Calendar size={18} />
               <span>Contrataciones</span>
+            </Link>
+            <Link 
+              href="/events" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
+            >
+              <Ticket size={18} />
+              <span>Eventos</span>
             </Link>
             <Link 
               href="/messaging" 
@@ -154,6 +161,12 @@ export function AppNavbar() {
                     Gestionar Contrataciones
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/tickets" className="cursor-pointer flex items-center gap-2 text-white/80 hover:text-white focus:text-white focus:bg-white/10">
+                    <Ticket size={16} />
+                    Mis Entradas
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator style={{ background: "rgba(255,255,255,0.1)" }} />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:text-red-300 focus:text-red-300 focus:bg-red-500/10 flex items-center gap-2">
                   <LogOut size={16} />
@@ -178,6 +191,14 @@ export function AppNavbar() {
             <Link href="/bookings" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
               <Calendar size={20} />
               <span>Contrataciones</span>
+            </Link>
+            <Link href="/events" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <Ticket size={20} />
+              <span>Eventos</span>
+            </Link>
+            <Link href="/tickets" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+              <Ticket size={20} />
+              <span>Mis Entradas</span>
             </Link>
             <Link href="/messaging" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
               <MessageSquare size={20} />

@@ -8,6 +8,9 @@ export async function GET() {
     try { await runQuery("ALTER TABLE reviews ADD COLUMN is_visible BOOLEAN DEFAULT 1", []) } catch { /* ya existe */ }
     try { await runQuery("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1", []) } catch { /* ya existe */ }
     try { await runQuery("ALTER TABLE users ADD COLUMN is_sanctioned BOOLEAN DEFAULT 0", []) } catch { /* ya existe */ }
+    try { await runQuery("ALTER TABLE users ADD COLUMN sanction_reason TEXT", []) } catch { /* ya existe */ }
+    try { await runQuery("ALTER TABLE users ADD COLUMN sanction_start DATETIME", []) } catch { /* ya existe */ }
+    try { await runQuery("ALTER TABLE users ADD COLUMN sanction_end DATETIME", []) } catch { /* ya existe */ }
 
     const users = await allQuery(
       `SELECT 
@@ -107,6 +110,23 @@ export async function PATCH(request: NextRequest) {
       await runQuery(`UPDATE users SET is_active = 0 WHERE id = ?`, [userId])
       await runQuery(`UPDATE artist_profiles SET is_published = 0 WHERE user_id = ?`, [userId])
       await runQuery(`UPDATE owner_profiles SET is_published = 0 WHERE user_id = ?`, [userId])
+    } else if (action === "unsanction") {
+      // Remove sanction from user
+      try { await runQuery("ALTER TABLE users ADD COLUMN is_sanctioned BOOLEAN DEFAULT 0", []) } catch {}
+      await runQuery(
+        `UPDATE users SET is_sanctioned = 0, sanction_reason = NULL, sanction_start = NULL, sanction_end = NULL WHERE id = ?`,
+        [userId]
+      )
+      // Restore profile visibility
+      await runQuery(`UPDATE artist_profiles SET is_published = 1 WHERE user_id = ?`, [userId])
+      await runQuery(`UPDATE owner_profiles SET is_published = 1 WHERE user_id = ?`, [userId])
+      // Notify user
+      try {
+        await runQuery(
+          `INSERT INTO notifications (user_id, type, title, message, related_type) VALUES (?, ?, ?, ?, ?)`,
+          [userId, "sanction", "Tu sanción ha sido levantada", "El administrador ha levantado la sanción de tu cuenta. Ya podés acceder normalmente a la plataforma.", "sanction"]
+        )
+      } catch { /* notifications may not exist */ }
     }
 
     return NextResponse.json({ success: true, message: `Usuario ${action}` })

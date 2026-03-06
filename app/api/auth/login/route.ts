@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // JOIN con profiles para obtener el teléfono (guardado en profiles al registrarse en versiones anteriores)
     // También revisamos users.phone que es donde se guarda desde ahora
     const user = await getAsync(
-      `SELECT u.*, COALESCE(NULLIF(u.phone,''), p.phone, "") as phone_value
+      `SELECT u.*, COALESCE(u.is_active, 1) as is_active, COALESCE(NULLIF(u.phone,''), p.phone, "") as phone_value
        FROM users u
        LEFT JOIN profiles p ON u.id = p.user_id
        WHERE u.email = ?`,
@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
     if (!user) {
       console.log("[v0] Usuario no encontrado:", email)
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
+    }
+
+    // Verificar si el usuario está dado de baja
+    if (user.is_active === 0) {
+      console.log("[v0] Usuario bloqueado intentó ingresar:", email)
+      return NextResponse.json({ error: "Usuario bloqueado o dado de baja por mala conducta. Por favor contactá a soporte." }, { status: 403 })
     }
 
     const isValid = await verifyPassword(password, user.password)

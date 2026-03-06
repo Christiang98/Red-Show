@@ -106,10 +106,11 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
   const [existingBookingId, setExistingBookingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"fotos" | "videos">("fotos")
   const [showHiringModal, setShowHiringModal] = useState(false)
-  const [hiringMessage, setHiringMessage] = useState("")
   const [proposedDate, setProposedDate] = useState("")
-  const [proposedTime, setProposedTime] = useState("")
+  const [proposedTimeStart, setProposedTimeStart] = useState("")
+  const [proposedTimeEnd, setProposedTimeEnd] = useState("")
   const [proposedPrice, setProposedPrice] = useState("")
+  // (campos de tipo/duración/personas eliminados - formulario simplificado)
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState("")
@@ -143,7 +144,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
       })
       if (existingBooking) {
         const confirmedStatuses = ["confirmed", "accepted"]
-        const activeStatuses    = ["pending", "matched"]
+        const activeStatuses    = ["pending", "matched", "negotiating", "info_requested"]
         if (confirmedStatuses.includes(existingBooking.status)) {
           setHiringStatus("accepted")
         } else if (activeStatuses.includes(existingBooking.status)) {
@@ -164,6 +165,14 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
 
   const handleSendHiringRequest = async () => {
     if (!currentUser) return
+    if (!proposedDate || !proposedTimeStart || !proposedTimeEnd) {
+      toast({ title: "Campos requeridos", description: "Completá la fecha, horario de inicio y horario de cierre.", variant: "destructive" })
+      return
+    }
+    if (proposedTimeEnd <= proposedTimeStart) {
+      toast({ title: "Horario inválido", description: "El horario de cierre debe ser posterior al de inicio.", variant: "destructive" })
+      return
+    }
     setHiringStatus("loading")
     setShowHiringModal(false)
     try {
@@ -174,24 +183,23 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
         body: JSON.stringify({
           artistId: isCurrentUserArtist ? currentUser.id : parseInt(userId),
           ownerId: isCurrentUserArtist ? parseInt(userId) : currentUser.id,
-          title: `Solicitud de contratacion - ${data.businessName || data.artistName}`,
-          description: hiringMessage || `Solicitud enviada desde el perfil`,
+          title: `Propuesta de contratación — ${data.businessName || data.artistName}`,
+          description: `Propuesta de contratación`,
           bookingDate: proposedDate || null,
-          eventTime: proposedTime || null,
+          eventTime: proposedTimeStart || null,
+          eventTimeEnd: proposedTimeEnd || null,
           price: proposedPrice ? parseFloat(proposedPrice) : null,
           senderName: `${currentUser.firstName} ${currentUser.lastName}`,
           senderImage: currentUser.profileImage || null,
           senderRole: currentUser.role,
-          message: hiringMessage,
         }),
       })
       const result = await response.json()
       if (response.ok) {
         setHiringStatus("pending")
         setExistingBookingId(result.id.toString())
-        setHiringMessage("")
-        setProposedDate("")
-        toast({ title: "Solicitud enviada", description: "Tu solicitud de contratacion ha sido enviada exitosamente." })
+        setProposedDate(""); setProposedTimeStart(""); setProposedTimeEnd(""); setProposedPrice("")
+        toast({ title: "Propuesta enviada", description: "Tu propuesta de contratación fue enviada exitosamente." })
       } else {
         throw new Error(result.error)
       }
@@ -749,7 +757,7 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-white">Enviar Propuesta de Contratación</DialogTitle>
             <DialogDescription className="text-white/45">
-              Enviá una propuesta a {data.businessName || data.artistName}. Si es aceptada, el local deberá confirmar abonando la tarifa de gestión (USD 3).
+              Enviá una propuesta a {data.businessName || data.artistName}. Si es aceptada, el local deberá confirmar abonando la tarifa de gestión ($4.200).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -761,43 +769,43 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                 <p className="text-xs text-white/35">{categoryLabel}</p>
               </div>
             </div>
-            {currentUser && (
-              <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/12 bg-white/3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
-                  {currentUser.firstName?.charAt(0)?.toUpperCase() || "U"}
-                </div>
-                <div>
-                  <p className="text-xs text-white/35">Solicitud de:</p>
-                  <p className="text-sm font-semibold text-white">{currentUser.firstName} {currentUser.lastName}</p>
-                </div>
-              </div>
-            )}
+
+            {/* Aviso sin texto libre */}
+            <div className="flex items-start gap-2 p-3 rounded-xl text-xs"
+                 style={{ background: "rgba(183,68,184,0.1)", border: "1px solid rgba(183,68,184,0.25)" }}>
+              <span style={{ color: "#c084fc" }}>ℹ</span>
+              <p style={{ color: "rgba(216,180,254,0.8)" }}>
+                Completá los datos del evento. Podrás negociar condiciones antes de confirmar. No hay mensajes libres hasta pagar.
+              </p>
+            </div>
+
             <div>
-              <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Fecha propuesta (opcional)</label>
+              <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Fecha *</label>
               <Input type="date" value={proposedDate} onChange={(e) => setProposedDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
+                min={new Date().toISOString().split("T")[0]} required
                 className="bg-white/5 border-white/12 text-white focus:border-purple-500/50" />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Horario del evento (opcional)</label>
-              <Input type="time" value={proposedTime} onChange={(e) => setProposedTime(e.target.value)}
-                className="bg-white/5 border-white/12 text-white focus:border-purple-500/50" />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Horario de inicio *</label>
+                <Input type="time" value={proposedTimeStart} onChange={(e) => setProposedTimeStart(e.target.value)} required
+                  className="bg-white/5 border-white/12 text-white focus:border-purple-500/50" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Horario de cierre *</label>
+                <Input type="time" value={proposedTimeEnd} onChange={(e) => setProposedTimeEnd(e.target.value)} required
+                  className="bg-white/5 border-white/12 text-white focus:border-purple-500/50" />
+              </div>
             </div>
+
             <div>
               <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Precio propuesto (opcional)</label>
               <Input type="number" value={proposedPrice} onChange={(e) => setProposedPrice(e.target.value)}
-                placeholder="$ Ingresá tu presupuesto"
+                placeholder="$ Tu presupuesto"
                 min="0" step="0.01"
                 className="bg-white/5 border-white/12 text-white placeholder-white/25 focus:border-purple-500/50" />
-              <p className="text-xs text-white/25 mt-1">Si tenés un presupuesto en mente, compartilo aquí</p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">Mensaje (opcional)</label>
-              <textarea value={hiringMessage} onChange={(e) => setHiringMessage(e.target.value)}
-                placeholder={`Hola! Me interesa contratar tus servicios para...`} rows={4}
-                className="w-full px-3 py-2 rounded-lg border border-white/12 bg-white/5 text-white placeholder-white/25 focus:outline-none resize-none text-sm" />
-              <p className="text-xs text-white/25 mt-1">Este mensaje se enviará junto con tu solicitud</p>
+              <p className="text-xs text-white/25 mt-1">Podés negociar el precio luego de enviar la propuesta</p>
             </div>
           </div>
           <div className="flex gap-3 pt-1">
