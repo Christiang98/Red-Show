@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CreditCard, Smartphone, CheckCircle, Loader2, X, Lock, Shield, Calendar, Ticket, Clock, MapPin, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -56,9 +56,9 @@ function formatExpiry(v: string) {
   return digits
 }
 
-function QRDisplay({ qrCode, size = 120 }: { qrCode: string; size?: number }) {
+function QRDisplay({ qrCode, size = 180 }: { qrCode: string; size?: number }) {
   const hash = qrCode.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  const cells = 21
+  const cells = 25
   const grid: boolean[][] = []
 
   for (let r = 0; r < cells; r++) {
@@ -81,17 +81,36 @@ function QRDisplay({ qrCode, size = 120 }: { qrCode: string; size?: number }) {
     }
   }
 
-  const cellSize = size / cells
+  const cellSize = Math.floor(size / cells)
+  const actualSize = cellSize * cells
 
   return (
-    <div style={{ width: size, height: size, background: "white", padding: 4, borderRadius: 8, display: "inline-block" }}>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cells}, ${cellSize}px)`, gap: 0 }}>
-        {grid.flat().map((filled, i) => (
-          <div key={i} style={{
-            width: cellSize, height: cellSize,
-            background: filled ? "#000" : "#fff"
-          }} />
-        ))}
+    <div style={{
+      width: actualSize, height: actualSize,
+      background: "white",
+      padding: 10,
+      borderRadius: 16,
+      display: "inline-block",
+      boxShadow: "0 8px 32px rgba(183,68,184,0.25), 0 2px 8px rgba(0,0,0,0.3)",
+    }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cells}, ${cellSize}px)`, gap: 0, borderRadius: 4, overflow: "hidden" }}>
+        {grid.flat().map((filled, i) => {
+          const row = Math.floor(i / cells)
+          const col = i % cells
+          // Finder patterns con color morado
+          const inFinderTL = row < 8 && col < 8
+          const inFinderTR = row < 8 && col >= cells - 8
+          const inFinderBL = row >= cells - 8 && col < 8
+          const isFinderZone = inFinderTL || inFinderTR || inFinderBL
+          const fillColor = filled ? (isFinderZone ? "#B744B8" : "#1a0a2e") : "#fff"
+          return (
+            <div key={i} style={{
+              width: cellSize, height: cellSize,
+              background: fillColor,
+              borderRadius: filled && isFinderZone ? 1 : 0,
+            }} />
+          )
+        })}
       </div>
     </div>
   )
@@ -99,14 +118,48 @@ function QRDisplay({ qrCode, size = 120 }: { qrCode: string; size?: number }) {
 
 export function TicketPaymentModal({ event, userId, userEmail, userName, onSuccess, onClose }: TicketPaymentModalProps) {
   const { toast } = useToast()
+  const isFreeEvent = !event.price || Number(event.price) === 0
   const [method, setMethod] = useState<PaymentMethod>(null)
-  const [step, setStep] = useState<Step>("method")
+  const [step, setStep] = useState<Step>(isFreeEvent ? "processing" : "method")
   const [cardNum, setCardNum] = useState("")
   const [cardName, setCardName] = useState("")
   const [cardExpiry, setCardExpiry] = useState("")
   const [cardCvv, setCardCvv] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [ticketData, setTicketData] = useState<{ id: number; qrCode: string } | null>(null)
+  const freeTicketProcessed = useRef(false)
+
+  // Si es gratis, procesar automáticamente al abrir (useRef evita doble ejecución en StrictMode)
+  useEffect(() => {
+    if (isFreeEvent && !freeTicketProcessed.current) {
+      freeTicketProcessed.current = true
+      processFreeTicket()
+    }
+  }, [])
+
+  const processFreeTicket = async () => {
+    try {
+      const res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          userId,
+          userEmail,
+          userName,
+          quantity: 1,
+          paymentMethod: "Gratis",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Error al reservar")
+      setTicketData({ id: data.id, qrCode: data.qrCode })
+      setStep("success")
+    } catch (e: any) {
+      toast({ title: "Error al reservar", description: e.message, variant: "destructive" })
+      onClose()
+    }
+  }
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Fecha a confirmar"
@@ -421,38 +474,110 @@ export function TicketPaymentModal({ event, userId, userEmail, userName, onSucce
 
           {/* SUCCESS */}
           {step === "success" && ticketData && (
-            <div className="flex flex-col items-center text-center px-4 py-8 gap-5">
+            <div className="flex flex-col items-center text-center px-2 py-6 gap-5">
+              {/* Check animado */}
               <div className="relative">
                 <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.2), rgba(22,163,74,0.1))", border: "2px solid rgba(34,197,94,0.3)" }}>
-                  <CheckCircle className="h-9 w-9 text-green-400" />
+                  style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.25), rgba(22,163,74,0.1))", border: "2px solid rgba(34,197,94,0.4)" }}>
+                  <CheckCircle className="h-10 w-10 text-green-400" />
                 </div>
+                <div className="absolute inset-0 rounded-full animate-ping opacity-30"
+                  style={{ border: "2px solid rgba(34,197,94,0.5)" }} />
               </div>
+
               <div>
-                <h3 className="font-black text-white text-xl mb-1">¡Entrada confirmada!</h3>
-                <p className="text-green-400 font-semibold text-sm mb-3">Tu pago fue procesado exitosamente</p>
+                <h3 className="font-black text-white text-2xl mb-1">{isFreeEvent ? "¡Reserva confirmada!" : "¡Entrada confirmada!"}</h3>
+                <p className="text-green-400 font-semibold text-sm mb-3">{isFreeEvent ? "Entrada gratuita reservada" : "Pago procesado exitosamente"}</p>
                 <p className="text-white/45 text-sm">
-                  Tu entrada fue enviada a <span className="text-white font-semibold">{userEmail}</span>. También podés verla en "Mis Entradas".
+                  Enviada a <span className="text-white font-semibold">{userEmail}</span>
                 </p>
               </div>
 
-              {/* QR */}
-              <div className="w-full p-4 rounded-2xl flex flex-col items-center gap-3"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div className="flex items-center gap-2 text-white/60 text-sm mb-1">
-                  <QrCode className="h-4 w-4 text-purple-400" />
-                  <span>Código QR de tu entrada</span>
+              {/* Ticket visual con QR */}
+              <div className="w-full relative overflow-hidden rounded-3xl"
+                style={{
+                  background: "linear-gradient(160deg, #1a0a2e 0%, #0d0520 50%, #080b14 100%)",
+                  border: "1px solid rgba(183,68,184,0.35)",
+                  boxShadow: "0 0 40px rgba(183,68,184,0.15), inset 0 1px 0 rgba(255,255,255,0.06)"
+                }}>
+
+                {/* Glow top */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 opacity-30 pointer-events-none"
+                  style={{ background: "radial-gradient(ellipse, rgba(183,68,184,0.8) 0%, transparent 70%)" }} />
+
+                {/* Header del ticket */}
+                <div className="relative px-6 pt-5 pb-4 flex items-center justify-between"
+                  style={{ borderBottom: "1px dashed rgba(255,255,255,0.12)" }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg, #B744B8, #7a1a8a)" }}>
+                      <Ticket className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-black text-sm leading-tight line-clamp-1">{event.title}</p>
+                      {event.event_date && (
+                        <p className="text-purple-300/70 text-xs">{formatDate(event.event_date)}{timeDisplay ? ` · ${timeDisplay}` : ""}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <p className="text-white/30 text-[10px] uppercase tracking-wider">Ticket</p>
+                    <p className="text-purple-300 font-black text-sm">#{ticketData.id}</p>
+                  </div>
                 </div>
-                <div className="p-3 rounded-2xl" style={{ background: "rgba(255,255,255,0.95)" }}>
-                  <QRDisplay qrCode={ticketData.qrCode} size={140} />
+
+                {/* QR centrado */}
+                <div className="flex flex-col items-center py-6 px-4 gap-4">
+                  {/* Marco decorativo del QR */}
+                  <div className="relative p-1 rounded-2xl"
+                    style={{ background: "linear-gradient(135deg, #B744B8, #001C55, #B744B8)" }}>
+                    <div className="p-2 rounded-xl" style={{ background: "#fff" }}>
+                      <QRDisplay qrCode={ticketData.qrCode} size={180} />
+                    </div>
+                    {/* Esquinas decorativas */}
+                    <div className="absolute -top-1 -left-1 w-4 h-4 rounded-tl-lg border-t-2 border-l-2 border-purple-400" />
+                    <div className="absolute -top-1 -right-1 w-4 h-4 rounded-tr-lg border-t-2 border-r-2 border-purple-400" />
+                    <div className="absolute -bottom-1 -left-1 w-4 h-4 rounded-bl-lg border-b-2 border-l-2 border-purple-400" />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-br-lg border-b-2 border-r-2 border-purple-400" />
+                  </div>
+
+                  {/* Código */}
+                  <div className="px-4 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <p className="text-white/50 font-mono text-xs tracking-widest">{ticketData.qrCode}</p>
+                  </div>
                 </div>
-                <p className="text-white/25 text-xs font-mono">{ticketData.qrCode}</p>
-                <p className="text-white/40 text-xs">Presentá este código en la entrada del evento</p>
+
+                {/* Separador tipo ticket (línea punteada con círculos) */}
+                <div className="relative flex items-center"
+                  style={{ borderTop: "1px dashed rgba(255,255,255,0.12)" }}>
+                  <div className="absolute -left-3 w-6 h-6 rounded-full"
+                    style={{ background: "linear-gradient(160deg, #080b14, #0d0817)" }} />
+                  <div className="absolute -right-3 w-6 h-6 rounded-full"
+                    style={{ background: "linear-gradient(160deg, #080b14, #0d0817)" }} />
+                </div>
+
+                {/* Footer del ticket */}
+                <div className="px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-white/35 text-xs">
+                    <Shield className="h-3 w-3 text-green-500/60" />
+                    Entrada válida · Red Show
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 text-xs font-semibold">Válida</span>
+                  </div>
+                </div>
               </div>
+
+              <p className="text-white/35 text-xs text-center leading-relaxed">
+                Presentá este código QR en la entrada del evento.<br/>
+                También lo encontrás en <span className="text-white/60">Mis Entradas</span>.
+              </p>
 
               <Button onClick={handleSuccessClose}
                 className="w-full h-12 font-bold border-0"
                 style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}>
+                <CheckCircle className="h-4 w-4 mr-2" />
                 Ver mis entradas
               </Button>
             </div>

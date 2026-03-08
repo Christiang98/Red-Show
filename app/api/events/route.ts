@@ -33,7 +33,9 @@ async function ensureEventColumns() {
 const BASE_QUERY = `
   SELECT e.*,
     u.first_name, u.last_name, u.role, u.email as creator_email,
-    COALESCE(op.business_name, ap.stage_name, u.first_name || ' ' || u.last_name) as creator_name,
+    CASE WHEN e.created_by_admin = 1 THEN 'Red Show'
+         ELSE COALESCE(op.business_name, ap.stage_name, u.first_name || ' ' || u.last_name)
+    END as creator_name,
     op.profile_image as owner_avatar,
     ap.profile_image as artist_avatar
   FROM events e

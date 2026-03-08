@@ -19,6 +19,8 @@ export default function MessagingPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [targetUserName, setTargetUserName] = useState<string>("")
+  // bookingId entre el usuario actual y la conversación seleccionada
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null)
 
   useEffect(() => {
     const currentUser = getCurrentUser()
@@ -85,6 +87,22 @@ export default function MessagingPage() {
 
   const selectedConversation = allConversations.find((c: any) => c.id === selectedConversationId)
 
+  // Buscar booking entre el usuario actual y el seleccionado para pasar al chat
+  useEffect(() => {
+    if (!user || !selectedConversationId) { setActiveBookingId(null); return }
+    fetch(`/api/bookings?userId=${user.id}`)
+      .then(r => r.json())
+      .then(bookings => {
+        if (!Array.isArray(bookings)) return
+        const match = bookings.find((b: any) =>
+          (String(b.artist_id) === String(selectedConversationId) || String(b.owner_id) === String(selectedConversationId)) &&
+          (String(b.artist_id) === String(user.id) || String(b.owner_id) === String(user.id))
+        )
+        setActiveBookingId(match ? String(match.id) : null)
+      })
+      .catch(() => setActiveBookingId(null))
+  }, [user, selectedConversationId])
+
   useEffect(() => {
     if (allConversations.length > 0 && !selectedConversationId && !targetUserId) {
       setSelectedConversationId(allConversations[0].id)
@@ -122,6 +140,7 @@ export default function MessagingPage() {
                   receiverId={Number.parseInt(selectedConversationId)}
                   senderId={user.id}
                   onMessageSent={mutate}
+                  bookingId={activeBookingId}
                 />
               ) : (
                 <Card className="h-full flex items-center justify-center">

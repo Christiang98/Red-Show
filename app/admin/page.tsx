@@ -65,7 +65,11 @@ export default function AdminPanel() {
   const [evLocation, setEvLocation] = useState("")
   const [evDate, setEvDate] = useState("")
   const [evTime, setEvTime] = useState("")
+  const [evTimeEnd, setEvTimeEnd] = useState("")
   const [evCapacity, setEvCapacity] = useState("")
+  const [evIsFree, setEvIsFree] = useState(true)
+  const [evPrice, setEvPrice] = useState("")
+  const [evCustomCategory, setEvCustomCategory] = useState("")
   const [evImages, setEvImages] = useState<string[]>([])
   const [evCreating, setEvCreating] = useState(false)
 
@@ -88,6 +92,8 @@ export default function AdminPanel() {
   })
   const [sanctionReason, setSanctionReason] = useState("")
   const [sanctionDays, setSanctionDays] = useState(7)
+  const sanctionDaysRef = useRef(7)
+  const sanctionReasonRef = useRef("")
 
   useEffect(() => {
     const currentUser = getCurrentUser()
@@ -187,6 +193,7 @@ export default function AdminPanel() {
 
   const handleEvCreate = async () => {
     if (!evTitle.trim()) return
+    if (!evIsFree && (!evPrice || parseFloat(evPrice) <= 0)) return
     setEvCreating(true)
     const cu = getCurrentUser()
     try {
@@ -195,15 +202,18 @@ export default function AdminPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: cu?.id,
-          title: evTitle, description: evDesc, category: evCategory,
-          location: evLocation, eventDate: evDate, eventTime: evTime,
+          title: evTitle, description: evDesc,
+          category: evCategory === "Otro" && evCustomCategory.trim() ? evCustomCategory.trim() : evCategory,
+          location: evLocation, eventDate: evDate, eventTime: evTime, eventTimeEnd: evTimeEnd,
           capacity: evCapacity ? Number(evCapacity) : null,
+          isFree: evIsFree, price: evIsFree ? 0 : parseFloat(evPrice),
           images: evImages, createdByAdmin: true
         }),
       })
       setEvShowCreate(false)
       setEvTitle(""); setEvDesc(""); setEvCategory(""); setEvLocation("")
-      setEvDate(""); setEvTime(""); setEvCapacity(""); setEvImages([])
+      setEvDate(""); setEvTime(""); setEvTimeEnd(""); setEvCapacity("")
+      setEvIsFree(true); setEvPrice(""); setEvCustomCategory(""); setEvImages([])
       await loadEvents()
     } catch {}
     setEvCreating(false)
@@ -234,35 +244,62 @@ export default function AdminPanel() {
     }
   }
 
-  const applySanction = (userId: number, userName: string) => {
-    setSanctionReason("")
-    setSanctionDays(7)
-    setConfirmModal({
-      open: true,
-      title: `Sancionar a ${userName}`,
-      description: "El perfil del usuario será desactivado durante el período indicado y recibirá una notificación.",
-      icon: "sanction",
-      confirmLabel: "Aplicar Sanción",
-      confirmClass: "bg-yellow-500 hover:bg-yellow-600 text-white",
-      showSanctionFields: true,
-      onConfirm: async () => {
-        const endDate = new Date()
-        endDate.setDate(endDate.getDate() + sanctionDays)
-        try {
-          await fetch('/api/admin/users', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId, action: 'sanction',
-              sanctionReason, sanctionDays,
-              sanctionEndDate: endDate.toISOString(),
+  const applySanction = (userId: number, userName: string, isCurrentlySanctioned: boolean) => {
+    if (isCurrentlySanctioned) {
+      // Ya está sancionado → ofrecer quitar la sanción
+      setConfirmModal({
+        open: true,
+        title: `Quitar sanción a ${userName}`,
+        description: "La sanción será eliminada y el usuario podrá volver a usar la plataforma normalmente.",
+        icon: "enable",
+        confirmLabel: "Quitar sanción",
+        confirmClass: "bg-green-600 hover:bg-green-700 text-white",
+        onConfirm: async () => {
+          try {
+            await fetch('/api/admin/users', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, action: 'unsanction' })
             })
-          })
-          toast({ title: "✅ Sanción aplicada", description: `${userName} ha sido sancionado por ${sanctionDays} días.` })
-          loadAllData()
-        } catch { toast({ title: "Error aplicando sanción", variant: "destructive" }) }
-      }
-    })
+            toast({ title: "✅ Sanción eliminada", description: `${userName} ya no está sancionado.` })
+            loadAllData()
+          } catch { toast({ title: "Error eliminando sanción", variant: "destructive" }) }
+        }
+      })
+    } else {
+      // No sancionado → aplicar sanción
+      setSanctionReason("")
+      setSanctionDays(7)
+      sanctionReasonRef.current = ""
+      sanctionDaysRef.current = 7
+      setConfirmModal({
+        open: true,
+        title: `Sancionar a ${userName}`,
+        description: "El perfil del usuario será desactivado durante el período indicado y recibirá una notificación.",
+        icon: "sanction",
+        confirmLabel: "Aplicar Sanción",
+        confirmClass: "bg-yellow-500 hover:bg-yellow-600 text-white",
+        showSanctionFields: true,
+        onConfirm: async () => {
+          const currentDays = sanctionDaysRef.current
+          const currentReason = sanctionReasonRef.current
+          const endDate = new Date(Date.now() + currentDays * 86400000)
+          try {
+            await fetch('/api/admin/users', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId, action: 'sanction',
+                sanctionReason: currentReason, sanctionDays: currentDays,
+                sanctionEndDate: endDate.toISOString(),
+              })
+            })
+            toast({ title: "✅ Sanción aplicada", description: `${userName} ha sido sancionado por ${currentDays} día${currentDays !== 1 ? "s" : ""}.` })
+            loadAllData()
+          } catch { toast({ title: "Error aplicando sanción", variant: "destructive" }) }
+        }
+      })
+    }
   }
 
   const deactivateUser = (userId: number, userName: string, isCurrentlyActive: boolean) => {
@@ -531,10 +568,10 @@ export default function AdminPanel() {
                               <Send className="h-3.5 w-3.5" />
                             </Button>
                             {u.is_active !== 0 && (
-                              <Button size="sm" onClick={() => applySanction(u.id, `${u.first_name} ${u.last_name}`)}
-                                className="h-8 px-3 bg-yellow-600 hover:bg-yellow-700 border-0 text-xs"
-                                title="Sancionar usuario">
-                                <Ban className="h-3.5 w-3.5" />
+                              <Button size="sm" onClick={() => applySanction(u.id, `${u.first_name} ${u.last_name}`, !!u.is_sanctioned)}
+                                className={`h-8 px-3 border-0 text-xs ${u.is_sanctioned ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'}`}
+                                title={u.is_sanctioned ? 'Quitar sanción' : 'Sancionar usuario'}>
+                                {u.is_sanctioned ? <CheckCircle className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
                               </Button>
                             )}
                             <Button size="sm"
@@ -895,27 +932,34 @@ export default function AdminPanel() {
                     <Shield className="h-4 w-4 text-purple-400" /> Nuevo evento (publicado como Admin)
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {[
-                      { label:"Título *", val:evTitle, set:setEvTitle, ph:"Nombre del evento" },
-                      { label:"Lugar",    val:evLocation, set:setEvLocation, ph:"Ej: Palermo, CABA" },
-                    ].map(f => (
-                      <div key={f.label}>
-                        <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">{f.label}</label>
-                        <input value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
-                          className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                          style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
-                      </div>
-                    ))}
+                    <div>
+                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Título *</label>
+                      <input value={evTitle} onChange={e=>setEvTitle(e.target.value)} placeholder="Nombre del evento"
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Lugar</label>
+                      <input value={evLocation} onChange={e=>setEvLocation(e.target.value)} placeholder="Ej: Palermo, CABA"
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                    </div>
                     <div>
                       <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Categoría</label>
                       <select value={evCategory} onChange={e=>setEvCategory(e.target.value)}
                         className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
                         style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }}>
                         <option value="">Seleccioná</option>
-                        {["Música en vivo","DJ","Teatro","Humor","Danza","Arte","Feria","Otro"].map(c=>(
+                        {["Música en vivo","DJ","Teatro","Humor","Danza","Arte","Feria","Gastronomía","Deportes","Cultura","Infantil","Corporativo","Moda","Fotografía","Otro"].map(c=>(
                           <option key={c} value={c} style={{background:"#0d1022"}}>{c}</option>
                         ))}
                       </select>
+                      {evCategory === "Otro" && (
+                        <input value={evCustomCategory} onChange={e=>setEvCustomCategory(e.target.value)}
+                          placeholder="Describí el tipo de evento..."
+                          className="w-full mt-2 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                          style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                      )}
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Capacidad</label>
@@ -929,11 +973,19 @@ export default function AdminPanel() {
                         className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
                         style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", colorScheme:"dark" }} />
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Horario</label>
-                      <input type="time" value={evTime} onChange={e=>setEvTime(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
-                        style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", colorScheme:"dark" }} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Horario inicio</label>
+                        <input type="time" value={evTime} onChange={e=>setEvTime(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
+                          style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", colorScheme:"dark" }} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Horario fin</label>
+                        <input type="time" value={evTimeEnd} onChange={e=>setEvTimeEnd(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-xl text-sm text-white focus:outline-none"
+                          style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", colorScheme:"dark" }} />
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -941,6 +993,31 @@ export default function AdminPanel() {
                     <textarea value={evDesc} onChange={e=>setEvDesc(e.target.value)} rows={3} placeholder="Info del evento..."
                       className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none resize-none"
                       style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                  </div>
+                  {/* Entrada gratis / con costo */}
+                  <div>
+                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Entrada</label>
+                    <div className="flex gap-2 mb-2">
+                      <button onClick={()=>setEvIsFree(true)}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                        style={{ background: evIsFree ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.04)", border: evIsFree ? "1px solid rgba(34,197,94,0.5)" : "1px solid rgba(255,255,255,0.1)", color: evIsFree ? "#4ade80" : "rgba(255,255,255,0.4)" }}>
+                        Gratis
+                      </button>
+                      <button onClick={()=>setEvIsFree(false)}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                        style={{ background: !evIsFree ? "rgba(183,68,184,0.2)" : "rgba(255,255,255,0.04)", border: !evIsFree ? "1px solid rgba(183,68,184,0.5)" : "1px solid rgba(255,255,255,0.1)", color: !evIsFree ? "#B744B8" : "rgba(255,255,255,0.4)" }}>
+                        Con costo
+                      </button>
+                    </div>
+                    {!evIsFree && (
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm font-semibold">$</span>
+                        <input type="number" value={evPrice} onChange={e=>setEvPrice(e.target.value)}
+                          placeholder="Precio de la entrada (ARS)"
+                          className="w-full pl-7 pr-3 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                          style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)" }} />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-white/40 uppercase tracking-wider block mb-1">Imágenes / Flyer (hasta 5)</label>
@@ -964,7 +1041,7 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={handleEvCreate} disabled={evCreating || !evTitle.trim()}
+                    <button onClick={handleEvCreate} disabled={evCreating || !evTitle.trim() || (!evIsFree && (!evPrice || parseFloat(evPrice) <= 0))}
                       className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
                       style={{ background:"linear-gradient(135deg,#001C55,#B744B8)" }}>
                       {evCreating ? "Publicando..." : "Publicar Evento"}
@@ -1173,7 +1250,7 @@ export default function AdminPanel() {
                   <label className="block text-sm font-medium text-white mb-1.5">Motivo de la sanción *</label>
                   <textarea
                     value={sanctionReason}
-                    onChange={e => setSanctionReason(e.target.value)}
+                    onChange={e => { setSanctionReason(e.target.value); sanctionReasonRef.current = e.target.value }}
                     placeholder="Describe el motivo de la sanción..."
                     rows={3}
                     className="w-full px-3 py-2 rounded-xl text-white placeholder-white/30 text-sm resize-none focus:outline-none"
@@ -1183,18 +1260,18 @@ export default function AdminPanel() {
                 <div>
                   <label className="block text-sm font-medium text-white mb-1.5">Duración: <span className="text-yellow-400 font-bold">{sanctionDays} días</span></label>
                   <input type="range" min={1} max={365} value={sanctionDays}
-                    onChange={e => setSanctionDays(Number(e.target.value))}
+                    onChange={e => { const v = Number(e.target.value); setSanctionDays(v); sanctionDaysRef.current = v }}
                     className="w-full accent-yellow-500" />
                   <div className="flex gap-2 mt-2">
                     {[3,7,14,30,90].map(d => (
-                      <button key={d} onClick={() => setSanctionDays(d)}
+                      <button key={d} onClick={() => { setSanctionDays(d); sanctionDaysRef.current = d }}
                         className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${sanctionDays === d ? 'bg-yellow-500 text-white border-yellow-500' : 'border-white/20 text-white/50 hover:border-yellow-400 hover:text-yellow-400'}`}>
                         {d}d
                       </button>
                     ))}
                   </div>
                   <p className="text-xs text-yellow-400/70 mt-2">
-                    📅 Finaliza: {(() => { const d = new Date(); d.setDate(d.getDate()+sanctionDays); return d.toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"}) })()}
+                    📅 Finaliza: {new Date(Date.now() + sanctionDays * 86400000).toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"})}
                   </p>
                 </div>
               </div>
@@ -1406,6 +1483,44 @@ export default function AdminPanel() {
                   </div>
                 )
               })()}
+
+              {/* Sanción activa */}
+              {detailsModal.user.is_sanctioned ? (
+                <div>
+                  <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+                    <Ban className="h-5 w-5 text-yellow-400" />
+                    Sanción Activa
+                  </h4>
+                  {(() => {
+                    const daysLeft = detailsModal.user.sanction_end
+                      ? Math.max(0, Math.ceil((new Date(detailsModal.user.sanction_end).getTime() - Date.now()) / 86400000))
+                      : null
+                    return (
+                      <div className="space-y-3">
+                        {daysLeft !== null && (
+                          <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/25">
+                            <Clock className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+                            <div>
+                              <p className="text-yellow-300 font-bold text-sm">
+                                {daysLeft > 0 ? `${daysLeft} día${daysLeft !== 1 ? "s" : ""} restantes` : "Sanción vencida hoy"}
+                              </p>
+                              <p className="text-white/40 text-xs">
+                                Vence: {new Date(detailsModal.user.sanction_end).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {detailsModal.user.sanction_reason && (
+                          <div className="p-4 rounded-xl" style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)" }}>
+                            <p className="text-yellow-400/70 text-xs font-semibold uppercase tracking-wider mb-1">Motivo</p>
+                            <p className="text-white/80 text-sm leading-relaxed">{detailsModal.user.sanction_reason}</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              ) : null}
 
               {/* Reseñas */}
               {detailsModal.user.reviews && detailsModal.user.reviews.length > 0 && (

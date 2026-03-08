@@ -148,9 +148,8 @@ function SanctionModal({
   user, onClose, onConfirm,
 }: { user: any; onClose: () => void; onConfirm: (reason: string, days: number) => void }) {
   const [reason, setReason] = useState("")
-  const [days, setDays] = useState(7)
-  const endDate = new Date()
-  endDate.setDate(endDate.getDate() + days)
+  const [days, setDays] = useState(3)
+  const endDate = new Date(Date.now() + days * 86400000)
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
@@ -545,9 +544,13 @@ function AdminEventsTab() {
   const [location, setLocation] = useState("")
   const [eventDate, setEventDate] = useState("")
   const [eventTime, setEventTime] = useState("")
+  const [eventTimeEnd, setEventTimeEnd] = useState("")
   const [capacity, setCapacity] = useState("")
+  const [isFree, setIsFree] = useState(true)
+  const [price, setPrice] = useState("")
   const [images, setImages] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
+  const [customCategory, setCustomCategory] = useState("")
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -574,6 +577,7 @@ function AdminEventsTab() {
 
   const handleCreate = async () => {
     if (!title.trim()) return
+    if (!isFree && (!price || parseFloat(price) <= 0)) return
     setCreating(true)
     try {
       await fetch("/api/events", {
@@ -581,15 +585,19 @@ function AdminEventsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: adminId,
-          title, description, category, location,
-          eventDate, eventTime,
+          title, description,
+          category: category === "Otro" && customCategory.trim() ? customCategory.trim() : category,
+          location,
+          eventDate, eventTime, eventTimeEnd,
           capacity: capacity ? Number(capacity) : null,
+          isFree, price: isFree ? 0 : parseFloat(price),
           images, createdByAdmin: true
         }),
       })
       setShowCreate(false)
       setTitle(""); setDescription(""); setCategory(""); setLocation("")
-      setEventDate(""); setEventTime(""); setCapacity(""); setImages([])
+      setEventDate(""); setEventTime(""); setEventTimeEnd(""); setCapacity("")
+      setIsFree(true); setPrice(""); setImages([]); setCustomCategory("")
       await loadEvents()
     } catch {}
     setCreating(false)
@@ -621,7 +629,7 @@ function AdminEventsTab() {
     }))
   }
 
-  const CATS = ["Música en vivo", "DJ", "Teatro", "Humor", "Danza", "Arte", "Feria", "Otro"]
+  const CATS = ["Música en vivo", "DJ", "Teatro", "Humor", "Danza", "Arte", "Feria", "Gastronomía", "Deportes", "Cultura", "Infantil", "Corporativo", "Moda", "Fotografía", "Otro"]
 
   const displayed = events.filter(e => {
     if (filterStatus === "visible") return e.is_published
@@ -679,16 +687,28 @@ function AdminEventsTab() {
                 <option value="">Seleccioná</option>
                 {CATS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              {category === "Otro" && (
+                <input value={customCategory} onChange={e => setCustomCategory(e.target.value)}
+                  placeholder="Describí el tipo de evento..."
+                  className="w-full mt-2 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Fecha</label>
               <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none" />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Horario</label>
-              <input type="time" value={eventTime} onChange={e => setEventTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Horario inicio</label>
+                <input type="time" value={eventTime} onChange={e => setEventTime(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Horario fin</label>
+                <input type="time" value={eventTimeEnd} onChange={e => setEventTimeEnd(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none" />
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Lugar</label>
@@ -705,6 +725,28 @@ function AdminEventsTab() {
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Descripción</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
               placeholder="Info del evento..." className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none resize-none" />
+          </div>
+          {/* Entrada gratis / con costo */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Entrada</label>
+            <div className="flex gap-2 mb-2">
+              <button onClick={() => setIsFree(true)}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${isFree ? "bg-green-500/15 border-green-500/40 text-green-600" : "border-border text-muted-foreground hover:border-green-500/30"}`}>
+                Gratis
+              </button>
+              <button onClick={() => setIsFree(false)}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${!isFree ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}>
+                Con costo
+              </button>
+            </div>
+            {!isFree && (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-semibold">$</span>
+                <input type="number" value={price} onChange={e => setPrice(e.target.value)}
+                  placeholder="Precio de la entrada (ARS)"
+                  className="w-full pl-7 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Imágenes / Flyer (hasta 5)</label>
@@ -727,7 +769,7 @@ function AdminEventsTab() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleCreate} disabled={creating || !title.trim()} size="sm"
+            <Button onClick={handleCreate} disabled={creating || !title.trim() || (!isFree && (!price || parseFloat(price) <= 0))} size="sm"
               className="font-bold border-0" style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
               {creating ? "Publicando..." : "Publicar Evento"}
             </Button>
@@ -956,14 +998,13 @@ export default function AdminManagement() {
   // Sanción con modal profesional
   const handleSanctionConfirm = async (userId: number, reason: string, days: number) => {
     setSanctionTarget(null)
-    const endDate = new Date()
-    endDate.setDate(endDate.getDate() + days)
+    const endDate = new Date(Date.now() + days * 86400000)
     await apiCall("/api/admin/users", "PATCH", {
       userId, action: "sanction",
       sanctionReason: reason,
       sanctionDays: days,
       sanctionEndDate: endDate.toISOString(),
-    }, "Sanción aplicada correctamente")
+    }, `Sanción de ${days} día${days !== 1 ? "s" : ""} aplicada correctamente`)
     if (selectedUser?.id === userId) setSelectedUser(null)
   }
 
@@ -1201,7 +1242,16 @@ export default function AdminManagement() {
                                       {usr.first_name} {usr.last_name}
                                     </span>
                                     {usr.verified && <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />}
-                                    {isSanctioned && <span className="text-[10px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-bold">SANCIONADO</span>}
+                                    {isSanctioned && (() => {
+                                      const daysLeft = usr.sanction_end
+                                        ? Math.max(0, Math.ceil((new Date(usr.sanction_end).getTime() - Date.now()) / 86400000))
+                                        : null
+                                      return (
+                                        <span className="text-[10px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-bold">
+                                          SANCIONADO{daysLeft !== null ? ` · ${daysLeft}d` : ""}
+                                        </span>
+                                      )
+                                    })()}
                                     {!isActive && <span className="text-[10px] px-1 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold">BAJA</span>}
                                   </div>
                                   <p className="text-xs text-muted-foreground truncate max-w-[160px]">{usr.email}</p>

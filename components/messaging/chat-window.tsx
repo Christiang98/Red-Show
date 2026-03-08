@@ -65,6 +65,8 @@ export function ChatWindow({
     bookingData?.status === "confirmed" ||
     bookingData?.status === "accepted"     // compatibilidad estado viejo
 
+  const isCompleted = bookingData?.status === "completed"
+
   const messages =
     allMessages?.filter(
       (m: Message) =>
@@ -82,7 +84,7 @@ export function ChatWindow({
   }, [messages])
 
   const handleSend = async () => {
-    if (!newMessage.trim() || isLoading) return
+    if (!newMessage.trim() || isLoading || isCompleted) return
 
     // Bloquear datos de contacto si no está confirmada
     if (!isConfirmed && hasContactData(newMessage)) {
@@ -121,19 +123,31 @@ export function ChatWindow({
         <div>
           <h2 className="font-semibold text-white text-sm">{conversationWith}</h2>
           <p className="text-xs text-white/35">
-            {isConfirmed ? "Chat habilitado" : "Modo limitado — confirma la contratación para chat completo"}
+            {isCompleted ? "Evento realizado — chat de solo lectura" : isConfirmed ? "Chat habilitado" : "Modo limitado — confirma la contratación para chat completo"}
           </p>
         </div>
-        {!isConfirmed && (
+        {isCompleted ? (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-purple-400 bg-purple-500/12 border border-purple-500/20">
+            <Lock className="h-3 w-3"/>Finalizado
+          </div>
+        ) : !isConfirmed && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-yellow-400 bg-yellow-500/12 border border-yellow-500/20">
-            <Lock className="h-3 w-3"/>
-            Limitado
+            <Lock className="h-3 w-3"/>Limitado
           </div>
         )}
       </div>
 
+      {/* Aviso evento completado */}
+      {isCompleted && (
+        <div className="mx-3 mt-3 p-3 rounded-xl border border-purple-500/20 bg-purple-500/8 text-purple-300/80 text-xs flex items-start gap-2">
+          <Lock className="h-3.5 w-3.5 flex-shrink-0 mt-0.5"/>
+          <span>
+            <strong>Evento realizado.</strong> El chat está en modo lectura. Ya no se pueden enviar nuevos mensajes.
+          </span>
+        </div>
+      )}
       {/* Aviso modo limitado */}
-      {!isConfirmed && (
+      {!isConfirmed && !isCompleted && (
         <div className="mx-3 mt-3 p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/8 text-yellow-300/80 text-xs flex items-start gap-2">
           <Lock className="h-3.5 w-3.5 flex-shrink-0 mt-0.5"/>
           <span>
@@ -176,33 +190,42 @@ export function ChatWindow({
       {/* Input */}
       <div className="border-t border-white/10 p-3"
            style={{ background:"rgba(8,11,20,0.5)" }}>
-        {contactWarn && (
-          <div className="mb-2 p-2 rounded-lg border border-red-500/25 bg-red-500/8 text-red-400 text-xs flex items-center gap-1.5">
-            <Lock className="h-3.5 w-3.5 flex-shrink-0"/>
-            No podés enviar datos de contacto hasta que se confirme la contratación.
+        {isCompleted ? (
+          <div className="flex items-center justify-center gap-2 py-3 text-purple-400/60 text-xs">
+            <Lock className="h-3.5 w-3.5"/>
+            <span>El evento fue realizado. No se pueden enviar más mensajes.</span>
           </div>
+        ) : (
+          <>
+            {contactWarn && (
+              <div className="mb-2 p-2 rounded-lg border border-red-500/25 bg-red-500/8 text-red-400 text-xs flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 flex-shrink-0"/>
+                No podés enviar datos de contacto hasta que se confirme la contratación.
+              </div>
+            )}
+            <div className="flex gap-2">
+              <textarea
+                value={newMessage}
+                onChange={(e) => { setNewMessage(e.target.value); setContactWarn(false) }}
+                onKeyPress={handleKeyPress}
+                placeholder={isConfirmed ? "Escribí tu mensaje..." : "Escribí tu mensaje (sin datos de contacto)..."}
+                rows={2}
+                disabled={isLoading}
+                className="flex-1 px-3 py-2 rounded-xl border border-white/12 bg-white/6 text-white
+                           placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-purple-500/40
+                           resize-none disabled:opacity-50 text-sm"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!newMessage.trim() || isLoading}
+                className="self-end h-10 px-4 font-bold border-0"
+                style={{ background:"linear-gradient(135deg,#B744B8,#7a1a8a)" }}
+              >
+                {isLoading ? "..." : <Send className="h-4 w-4"/>}
+              </Button>
+            </div>
+          </>
         )}
-        <div className="flex gap-2">
-          <textarea
-            value={newMessage}
-            onChange={(e) => { setNewMessage(e.target.value); setContactWarn(false) }}
-            onKeyPress={handleKeyPress}
-            placeholder={isConfirmed ? "Escribí tu mensaje..." : "Escribí tu mensaje (sin datos de contacto)..."}
-            rows={2}
-            disabled={isLoading}
-            className="flex-1 px-3 py-2 rounded-xl border border-white/12 bg-white/6 text-white
-                       placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-purple-500/40
-                       resize-none disabled:opacity-50 text-sm"
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!newMessage.trim() || isLoading}
-            className="self-end h-10 px-4 font-bold border-0"
-            style={{ background:"linear-gradient(135deg,#B744B8,#7a1a8a)" }}
-          >
-            {isLoading ? "..." : <Send className="h-4 w-4"/>}
-          </Button>
-        </div>
       </div>
     </div>
   )

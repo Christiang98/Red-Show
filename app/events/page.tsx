@@ -13,7 +13,7 @@ import {
   Upload, ChevronLeft, ChevronRight, Loader2, Music, Sparkles, Ticket, DollarSign
 } from "lucide-react"
 
-const CATEGORIES = ["Música en vivo", "DJ", "Teatro", "Humor", "Danza", "Arte", "Feria", "Otro"]
+const CATEGORIES = ["Música en vivo", "DJ", "Teatro", "Humor", "Danza", "Arte", "Feria", "Gastronomía", "Deportes", "Cultura", "Infantil", "Corporativo", "Moda", "Fotografía", "Otro"]
 
 function EventCard({ event, currentUser, onDelete, onBuyTicket }: {
   event: any; currentUser: any; onDelete: (id: number) => void; onBuyTicket: (event: any) => void
@@ -157,6 +157,7 @@ function CreateEventModal({ userId, onClose, onCreated }: { userId: number; onCl
   const [price, setPrice] = useState("")
   const [images, setImages] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [customCategory, setCustomCategory] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleImages = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +180,9 @@ function CreateEventModal({ userId, onClose, onCreated }: { userId: number; onCl
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId, title, description, category, location,
+          userId, title, description,
+          category: category === "Otro" && customCategory.trim() ? customCategory.trim() : category,
+          location,
           eventDate, eventTime, eventTimeEnd,
           capacity: capacity ? Number(capacity) : null,
           isFree, price: isFree ? 0 : parseFloat(price),
@@ -234,6 +237,10 @@ function CreateEventModal({ userId, onClose, onCreated }: { userId: number; onCl
               <option value="">Seleccioná una categoría</option>
               {CATEGORIES.map(c => <option key={c} value={c} style={{ background: "#0d1022" }}>{c}</option>)}
             </select>
+            {category === "Otro" && (
+              <input value={customCategory} onChange={e => setCustomCategory(e.target.value)}
+                placeholder="Describí el tipo de evento..." className={`${IC} mt-2`} style={IS} />
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Fecha</label>

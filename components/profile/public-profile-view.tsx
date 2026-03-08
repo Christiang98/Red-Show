@@ -38,7 +38,8 @@ import {
   CheckCircle2,
   Flag,
   FileText,
-  Facebook
+  Facebook,
+  Lock
 } from "lucide-react"
 import { AppNavbar } from "@/components/navigation/app-navbar"
 import { useToast } from "@/hooks/use-toast"
@@ -673,8 +674,8 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
               </>
             )}
 
-            {/* Social links */}
-            {(data.instagram || data.tiktok || data.facebook || data.otherSocial || data.spotify || data.portfolioUrl) && (
+            {/* Social links — solo visibles si hay contratación confirmada o es el propio perfil */}
+            {(isOwnProfile || hiringStatus === "accepted") && (data.instagram || data.tiktok || data.facebook || data.otherSocial || data.spotify || data.portfolioUrl) && (
               <GlassCard className="p-5">
                 <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-purple-400" />
@@ -743,6 +744,22 @@ export function PublicProfileView({ type, data, userId }: PublicProfileProps) {
                       <span className="text-sm text-white/45 truncate">{data.otherSocial}</span>
                     </div>
                   )}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Placeholder redes sociales bloqueadas */}
+            {!isOwnProfile && hiringStatus !== "accepted" && (data.instagram || data.tiktok || data.facebook || data.otherSocial || data.spotify || data.portfolioUrl) && (
+              <GlassCard className="p-5">
+                <h3 className="text-xs font-bold text-white/35 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-purple-400" />
+                  Redes y Web
+                </h3>
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-white/8 bg-white/3">
+                  <Lock className="w-4 h-4 text-white/30 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-white/40 leading-relaxed">
+                    Las redes sociales y datos de contacto se muestran una vez que se confirma la contratación.
+                  </p>
                 </div>
               </GlassCard>
             )}

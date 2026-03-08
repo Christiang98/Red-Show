@@ -80,7 +80,8 @@ export async function PATCH(request: NextRequest) {
 
       const { sanctionReason, sanctionDays, sanctionEndDate } = body
       const startDate = new Date().toISOString()
-      const endDate = sanctionEndDate || new Date(Date.now() + 7 * 86400000).toISOString()
+      const days = sanctionDays != null ? Number(sanctionDays) : 7
+      const endDate = sanctionEndDate || new Date(Date.now() + days * 86400000).toISOString()
 
       await runQuery(
         `UPDATE users SET is_sanctioned = 1, sanction_reason = ?, sanction_start = ?, sanction_end = ? WHERE id = ?`,
@@ -93,7 +94,6 @@ export async function PATCH(request: NextRequest) {
       // Send notification to sanctioned user
       try {
         const endDateFormatted = new Date(endDate).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
-        const days = sanctionDays || 7
         await runQuery(
           `INSERT INTO notifications (user_id, type, title, message, related_type) VALUES (?, ?, ?, ?, ?)`,
           [

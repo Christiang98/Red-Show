@@ -1,3 +1,0 @@
-# Patch para agregar columnas de imagen a reports y support_tickets
-ALTER TABLE reports ADD COLUMN image_url TEXT;
-ALTER TABLE support_tickets ADD COLUMN image_url TEXT;
