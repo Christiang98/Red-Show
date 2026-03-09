@@ -45,7 +45,7 @@ export default function DashboardPage() {
     { label: "Mensajes nuevos", value: unreadMessages, icon: MessageSquare },
     {
       label: "Perfil",
-      value: user.role === "owner" ? "Propietario" : user.role === "artist" ? "Artista" : "Organizador",
+      value: user.role === "owner" ? "Propietario" : user.role === "artist" ? "Artista" : user.role === "user" ? "Usuario" : "Organizador",
       icon: Users,
     },
   ]
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   const quickActions = [
     {
       title: "Buscar Oportunidades",
-      description: user.role === "owner" ? "Encuentra artistas para tu espacio" : "Explora espacios y eventos",
+      description: user.role === "owner" ? "Encuentra artistas para tu espacio" : user.role === "user" ? "Explorá artistas y locales disponibles" : "Explora espacios y eventos",
       href: "/search",
       icon: Users,
       color: "bg-blue-500/20 border-blue-400/30 hover:bg-blue-500/30",
@@ -77,7 +77,7 @@ export default function DashboardPage() {
     },
     {
       title: "Tu Perfil",
-      description: user.role === "owner" ? "Ve y edita tu información de negocio" : "Ve y actualiza tu portafolio",
+      description: user.role === "owner" ? "Ve y edita tu información de negocio" : user.role === "user" ? "Editá tus datos personales" : "Ve y actualiza tu portafolio",
       href: "/my-profile",
       icon: BarChart3,
       color: "bg-orange-500/20 border-orange-400/30 hover:bg-orange-500/30",

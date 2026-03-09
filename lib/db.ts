@@ -72,8 +72,9 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
               password VARCHAR(255) NOT NULL,
               first_name VARCHAR(100),
               last_name VARCHAR(100),
-              role VARCHAR(20) CHECK (role IN ('owner', 'artist', 'organizer', 'admin')),
+              role VARCHAR(20) CHECK (role IN ('owner', 'artist', 'organizer', 'admin', 'user')),
               phone VARCHAR(20),
+              username VARCHAR(50) UNIQUE DEFAULT NULL,
               is_active BOOLEAN DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -344,14 +345,47 @@ export async function initializeDatabaseIfNeeded(): Promise<void> {
             "ALTER TABLE bookings ADD COLUMN accepted_by_artist BOOLEAN DEFAULT 0",
             "ALTER TABLE bookings ADD COLUMN accepted_by_owner BOOLEAN DEFAULT 0",
             "ALTER TABLE bookings ADD COLUMN last_action_by INTEGER",
+            "ALTER TABLE bookings ADD COLUMN commission_payer TEXT DEFAULT NULL",
             "ALTER TABLE reviews ADD COLUMN is_visible BOOLEAN DEFAULT 1",
             "ALTER TABLE users ADD COLUMN is_sanctioned BOOLEAN DEFAULT 0",
             "ALTER TABLE users ADD COLUMN sanction_reason TEXT",
             "ALTER TABLE users ADD COLUMN sanction_start DATETIME",
             "ALTER TABLE users ADD COLUMN sanction_end DATETIME",
+            "ALTER TABLE users ADD COLUMN username VARCHAR(50) DEFAULT NULL",
           ]
           for (const migSql of autoMigrations) {
             try { await _runAsync(newDb, migSql, []) } catch { /* columna ya existe, ok */ }
+          }
+          // ── Migrar tabla users para permitir rol 'user' (Usuario Común) ──
+          try {
+            const usersTbl = await _getAsync(newDb, "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'", [])
+            if (usersTbl?.sql && !usersTbl.sql.includes("'user'")) {
+              console.log("[DB] Migrando tabla users para incluir rol 'user'...")
+              await _runAsync(newDb, "PRAGMA foreign_keys = OFF", [])
+              await _runAsync(newDb, "ALTER TABLE users RENAME TO users_old_role", [])
+              await _execAsync(newDb, `CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                role VARCHAR(20) CHECK (role IN ('owner', 'artist', 'organizer', 'admin', 'user')),
+                phone VARCHAR(20),
+                is_active BOOLEAN DEFAULT 1,
+                is_sanctioned BOOLEAN DEFAULT 0,
+                sanction_reason TEXT,
+                sanction_start DATETIME,
+                sanction_end DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+              )`)
+              await _runAsync(newDb, `INSERT INTO users SELECT * FROM users_old_role`, [])
+              await _runAsync(newDb, "DROP TABLE users_old_role", [])
+              await _runAsync(newDb, "PRAGMA foreign_keys = ON", [])
+              console.log("[DB] Migración de tabla users completada.")
+            }
+          } catch (e) {
+            console.error("[DB] Error migrando tabla users:", e)
           }
           // ── Auto-reparar CHECK constraint si es versión vieja (sin 'negotiating') ──
           try {

@@ -10,6 +10,7 @@ interface PaymentModalProps {
   bookingTitle: string
   artistName: string
   bookingDate?: string
+  senderRole?: string
   onSuccess: () => void
   onClose: () => void
 }
@@ -46,7 +47,7 @@ function formatExpiry(v: string) {
   return digits
 }
 
-export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate, onSuccess, onClose }: PaymentModalProps) {
+export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate, senderRole, onSuccess, onClose }: PaymentModalProps) {
   const { toast } = useToast()
   const [method, setMethod] = useState<PaymentMethod>(null)
   const [step, setStep]     = useState<Step>("method")
@@ -180,6 +181,12 @@ export function PaymentModal({ bookingId, bookingTitle, artistName, bookingDate,
                 $4.200
               </span>
             </div>
+            {senderRole === "user" && (
+              <div className="mt-2 px-3 py-2 rounded-lg text-xs text-white/60"
+                   style={{ background: "rgba(183,68,184,0.08)", border: "1px solid rgba(183,68,184,0.15)" }}>
+                💡 <span className="font-semibold text-white/80">Nota:</span> Como esta contratación fue iniciada por un Usuario Común, la comisión de plataforma es abonada por quien acepta la solicitud.
+              </div>
+            )}
           </div>
         )}
 

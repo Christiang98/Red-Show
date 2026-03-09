@@ -85,7 +85,7 @@ export default function MyProfilePage() {
                 </h2>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Rol: <span className="font-medium">{user.role === "artist" ? "Artista" : "Dueño"}</span>
+                  Rol: <span className="font-medium">{user.role === "artist" ? "Artista" : user.role === "user" ? "Usuario Común" : "Dueño"}</span>
                 </p>
               </div>
             </div>
@@ -111,7 +111,8 @@ export default function MyProfilePage() {
           </div>
         </Card>
 
-        {/* Card de perfil profesional */}
+        {/* Card de perfil profesional - Solo para artistas y dueños */}
+        {user.role !== "user" && (
         <Card className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -204,13 +205,39 @@ export default function MyProfilePage() {
             </div>
           )}
         </Card>
+        )}
 
-        {/* Botón para ver perfil público */}
+        {/* Contrataciones y reseñas para Usuario Común */}
+        {user.role === "user" && (
+          <Card className="p-6 mt-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-secondary/10 rounded-full">
+                <Briefcase className="h-8 w-8 text-secondary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Mi Actividad</h2>
+                <p className="text-sm text-muted-foreground">Tu perfil es privado — no apareces en búsquedas públicas</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+              <Button asChild variant="outline" className="flex-1">
+                <Link href="/profile/user">Editar mis datos</Link>
+              </Button>
+              <Button asChild variant="outline" className="flex-1">
+                <Link href="/bookings">Ver mis contrataciones</Link>
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Botón para ver perfil público - Solo para artistas y dueños */}
+        {user.role !== "user" && (
         <div className="mt-6 text-center">
           <Button asChild variant="outline">
             <Link href={`/profile/${user.id}`}>Ver mi perfil público</Link>
           </Button>
         </div>
+        )}
       </main>
     </div>
   )

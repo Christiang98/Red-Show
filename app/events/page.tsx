@@ -381,11 +381,13 @@ export default function EventsPage() {
               <Ticket className="h-4 w-4" />
               Mis Entradas
             </Button>
+            {user?.role !== "user" && (
             <Button onClick={() => setShowCreate(true)} className="h-10 font-bold border-0 gap-2"
               style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
               <Plus className="h-4 w-4" />
               Publicar evento
             </Button>
+            )}
           </div>
         </div>
 
@@ -412,12 +414,14 @@ export default function EventsPage() {
           <div className="text-center py-20">
             <Sparkles className="h-16 w-16 text-white/10 mx-auto mb-4" />
             <p className="text-white/40 text-lg font-semibold">No hay eventos todavía</p>
-            <p className="text-white/25 text-sm mt-1">¡Sé el primero en publicar uno!</p>
+            <p className="text-white/25 text-sm mt-1">{user?.role === "user" ? "Volvé más tarde para ver eventos disponibles." : "¡Sé el primero en publicar uno!"}</p>
+            {user?.role !== "user" && (
             <Button onClick={() => setShowCreate(true)} className="mt-6 font-bold border-0"
               style={{ background: "linear-gradient(135deg, #001C55, #B744B8)" }}>
               <Plus className="h-4 w-4 mr-2" />
               Publicar evento
             </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

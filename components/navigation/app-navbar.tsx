@@ -42,7 +42,7 @@ export function AppNavbar() {
 
   if (!user) return null
 
-  const profileEditLink = user.role === "owner" ? "/profile/owner" : "/profile/artist"
+  const profileEditLink = user.role === "owner" ? "/profile/owner" : user.role === "user" ? "/profile/user" : "/profile/artist"
   const isAdmin = user.role === "admin"
 
   return (
@@ -132,7 +132,7 @@ export function AppNavbar() {
                       {user.firstName}
                     </p>
                     <p className="text-xs text-gray-500 capitalize">
-                      {user.role === "owner" ? "Dueño" : user.role === "artist" ? "Artista/Emprendedor" : user.role}
+                      {user.role === "owner" ? "Dueño" : user.role === "artist" ? "Artista/Emprendedor" : user.role === "user" ? "Usuario" : user.role}
                     </p>
                   </div>
                 </Button>

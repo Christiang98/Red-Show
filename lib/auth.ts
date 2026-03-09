@@ -3,7 +3,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: "owner" | "artist" | "organizer" | "admin" // Added "admin" role type
+  role: "owner" | "artist" | "organizer" | "admin" | "user" // Added "user" (Usuario Común) role type
   phone?: string
   createdAt: string
 }
@@ -21,7 +21,7 @@ export async function register(userData: {
   password: string
   firstName: string
   lastName: string
-  role: "owner" | "artist" | "organizer" | "admin" // Updated role type
+  role: "owner" | "artist" | "organizer" | "admin" | "user" // Updated role type
   phone?: string
 }): Promise<{ success: boolean; message: string; user?: User; token?: string }> {
   try {

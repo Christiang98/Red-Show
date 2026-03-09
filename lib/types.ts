@@ -4,7 +4,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: "owner" | "artist" | "organizer" | "admin" // Added "admin" role type
+  role: "owner" | "artist" | "organizer" | "admin" | "user" // Added "user" (Usuario Común) role type
   profileImage?: string
   location?: string
   bio?: string

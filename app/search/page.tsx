@@ -148,6 +148,11 @@ export default function SearchPage() {
         title: "Busca Talentos",
         subtitle: "Encuentra artistas y servicios para tu establecimiento"
       }
+    } else if (user?.role === "user") {
+      return {
+        title: "Explorar Oportunidades",
+        subtitle: "Encontrá artistas o locales y enviá solicitudes de contratación"
+      }
     }
     return {
       title: "Busca en Red Show",

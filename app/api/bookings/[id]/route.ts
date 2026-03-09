@@ -48,11 +48,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       const ref = genRef()
       const now = new Date().toISOString()
+      // Lógica de comisión: si el sender_role es 'user', la comisión la paga quien acepta
+      // (el artista o dueño que recibe la solicitud del usuario común)
+      // commission_payer: 'artist' si contrata artista, 'owner' si contrata dueño
+      const commissionPayer = booking.sender_role === "user"
+        ? (booking.artist_id && booking.owner_id ? "artist" : "owner") // por defecto artista en solicitud de usuario
+        : null // en otros casos se deja null (lógica normal)
       await runAsync(
         `UPDATE bookings SET status='confirmed', commission_paid=1, confirmed_at=?,
            payment_method=?, payment_amount=4200, payment_date=?,
-           payment_reference=?, payment_status='Aprobado', updated_at=? WHERE id=?`,
-        [now, paymentMethod || "tarjeta", now, ref, now, bookingId],
+           payment_reference=?, payment_status='Aprobado', commission_payer=?, updated_at=? WHERE id=?`,
+        [now, paymentMethod || "tarjeta", now, ref, commissionPayer, now, bookingId],
       )
       for (const uid of [booking.artist_id, booking.owner_id]) {
         await runAsync(

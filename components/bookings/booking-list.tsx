@@ -83,8 +83,8 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
   })
 
   const otherUserId = (b: Booking) => {
-    if (isReceived) return b.sender_role === "artist" ? b.artist_id : b.owner_id
-    return b.sender_role === "artist" ? b.owner_id : b.artist_id
+    if (isReceived) return b.sender_role === "artist" ? b.artist_id : b.sender_role === "user" ? (b.artist_id || b.owner_id) : b.owner_id
+    return b.sender_role === "artist" ? b.owner_id : b.sender_role === "user" ? (b.owner_id || b.artist_id) : b.artist_id
   }
 
   const patchBooking = async (id: string, payload: object, msg: string) => {
@@ -127,6 +127,7 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
             bookingTitle={b.title || "Contratación"}
             artistName={b.artist_name || b.sender_name || "Artista"}
             bookingDate={b.booking_date || b.date}
+            senderRole={b.sender_role}
             onSuccess={() => { onUpdateStatus?.(payingId, "confirmed"); setPayingId(null) }}
             onClose={() => setPayingId(null)}
           />
@@ -219,7 +220,7 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
                           <p className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Propuesta de:</p>
                           <p className="font-semibold text-white text-sm">{booking.sender_name}</p>
                           <p className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>
-                            {booking.sender_role === "artist" ? "Artista / Emprendedor" : "Dueño de Local"}
+                            {booking.sender_role === "artist" ? "Artista / Emprendedor" : booking.sender_role === "user" ? "Usuario Común" : "Dueño de Local"}
                           </p>
                         </div>
                       </div>
@@ -250,7 +251,8 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
                   {!isReceived && isNegotiating && (() => {
                     const lastActionBy = booking.last_action_by ? Number(booking.last_action_by) : null
                     const senderIsArtist = booking.sender_role === "artist"
-                    const senderUserId = senderIsArtist ? Number(booking.artist_id) : Number(booking.owner_id)
+                    const senderIsUser   = booking.sender_role === "user"
+                    const senderUserId = senderIsArtist ? Number(booking.artist_id) : senderIsUser ? (Number(booking.owner_id) || Number(booking.artist_id)) : Number(booking.owner_id)
                     // Solo mostrar cancelar si soy el que envió la propuesta inicial y ya actué (no tengo turno)
                     const iWasSender = myId === senderUserId
                     const myLastAction = lastActionBy === myId
@@ -322,7 +324,8 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
                         )}
                       </div>
 
-                      {amIOwner ? (
+                      {/* Cuando el sender es 'user', quien acepta (artista o dueño) paga la comisión */}
+                      {(amIOwner || (booking.sender_role === "user" && Number(booking.artist_id) === myId)) ? (
                         <Button onClick={() => setPayingId(id)}
                           className="w-full h-12 font-bold border-0"
                           style={{ background: "linear-gradient(135deg,#B744B8,#7a1a8a)", boxShadow: "0 4px 20px rgba(183,68,184,0.35)" }}>
@@ -333,7 +336,9 @@ export function BookingList({ bookings, isReceived = false, onUpdateStatus }: Bo
                         <div className="p-3 rounded-xl text-center"
                              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                           <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                            Esperando que el local confirme y abone la tarifa de gestión.
+                            {booking.sender_role === "user"
+                              ? "Esperando que quien aceptó la solicitud confirme y abone la tarifa de gestión."
+                              : "Esperando que el local confirme y abone la tarifa de gestión."}
                           </p>
                         </div>
                       )}

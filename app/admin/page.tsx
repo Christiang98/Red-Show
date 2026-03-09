@@ -544,8 +544,8 @@ export default function AdminPanel() {
                         </td>
                         <td className="p-4"><p className="text-white/70 text-sm">{u.email}</p></td>
                         <td className="p-4">
-                          <Badge className={u.role === 'admin' ? 'bg-purple-500' : u.role === 'artist' ? 'bg-blue-500' : 'bg-green-500'}>
-                            {u.role === 'admin' ? 'Admin' : u.role === 'artist' ? 'Artista' : 'Dueño'}
+                          <Badge className={u.role === 'admin' ? 'bg-purple-500' : u.role === 'artist' ? 'bg-blue-500' : u.role === 'user' ? 'bg-emerald-600' : 'bg-green-500'}>
+                            {u.role === 'admin' ? 'Admin' : u.role === 'artist' ? 'Artista' : u.role === 'user' ? 'Usuario' : 'Dueño'}
                           </Badge>
                         </td>
                         <td className="p-4">
@@ -559,10 +559,12 @@ export default function AdminPanel() {
                               className="h-8 px-3 bg-blue-600 hover:bg-blue-700 border-0 text-xs">
                               <Info className="h-3.5 w-3.5 mr-1" />Ver más
                             </Button>
+                            {u.role !== 'user' && (
                             <Button size="sm" onClick={() => router.push(`/profile/${u.id}`)}
                               variant="outline" className="h-8 px-3 border-white/20 bg-transparent text-xs">
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
+                            )}
                             <Button size="sm" onClick={() => setMessageModal({ open: true, userId: u.id, userName: `${u.first_name} ${u.last_name}` })}
                               className="h-8 px-3 bg-purple-600 hover:bg-purple-700 border-0 text-xs">
                               <Send className="h-3.5 w-3.5" />
@@ -1361,7 +1363,7 @@ export default function AdminPanel() {
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <p className="text-white/50 text-xs mb-1">Rol</p>
                     <p className="text-white font-semibold">
-                      {detailsModal.user.role === 'admin' ? 'Administrador' : detailsModal.user.role === 'artist' ? 'Artista' : detailsModal.user.role === 'owner' ? 'Dueño de Local' : detailsModal.user.role}
+                      {detailsModal.user.role === 'admin' ? 'Administrador' : detailsModal.user.role === 'artist' ? 'Artista' : detailsModal.user.role === 'owner' ? 'Dueño de Local' : detailsModal.user.role === 'user' ? 'Usuario' : detailsModal.user.role}
                     </p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -1434,8 +1436,8 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {/* Suscripción */}
-              {(() => {
+              {/* Suscripción - solo para artistas y dueños */}
+              {detailsModal.user.role !== 'user' && (() => {
                 const sub = detailsModal.user.subscription
                 const subDays = sub?.days_remaining ?? -1
                 return (
@@ -1552,10 +1554,12 @@ export default function AdminPanel() {
             </div>
 
             <div className="flex gap-3 p-6 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+              {detailsModal.user.role !== 'user' && (
               <Button onClick={() => router.push(`/profile/${detailsModal.user.id}`)}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 border-0">
                 <ExternalLink className="h-4 w-4 mr-2" />Ver Perfil Público
               </Button>
+              )}
               <Button onClick={() => { setDetailsModal({ open: false, user: null }); setMessageModal({ open: true, userId: detailsModal.user.id, userName: `${detailsModal.user.first_name} ${detailsModal.user.last_name}` }) }}
                 className="flex-1 bg-purple-600 hover:bg-purple-700 border-0">
                 <Send className="h-4 w-4 mr-2" />Enviar Mensaje

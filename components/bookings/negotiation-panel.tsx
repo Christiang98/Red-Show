@@ -213,7 +213,9 @@ export function NegotiationPanel({ booking: propBooking, currentUserId, isArtist
   // ── Turno ─────────────────────────────────────────────────────────────────
   const lastActionBy   = booking.last_action_by ? Number(booking.last_action_by) : null
   const senderIsArtist = booking.sender_role === "artist"
-  const senderUserId   = senderIsArtist ? Number(booking.artist_id) : Number(booking.owner_id)
+  const senderIsUser   = booking.sender_role === "user"
+  // Para usuario común: el sender es externo, el turno lo maneja el receptor (artista o dueño)
+  const senderUserId   = senderIsArtist ? Number(booking.artist_id) : senderIsUser ? Number(booking.owner_id || booking.artist_id) : Number(booking.owner_id)
 
   const isMyTurn = lastActionBy !== null
     ? lastActionBy !== currentUserId          // Si alguien actuó, le toca al otro

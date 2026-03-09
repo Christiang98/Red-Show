@@ -36,6 +36,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; icon: any }> =
   artist: { label: "Artista",       color: "bg-purple-500/20 text-purple-300 border-purple-500/40", icon: Music },
   owner:  { label: "Dueño de Local",color: "bg-blue-500/20 text-blue-300 border-blue-500/40",       icon: Building2 },
   admin:  { label: "Administrador", color: "bg-rose-500/20 text-rose-300 border-rose-500/40",        icon: Shield },
+  user:   { label: "Usuario",       color: "bg-green-500/20 text-green-300 border-green-500/40",     icon: Users },
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -438,10 +439,12 @@ function UserModal({
               Acciones administrativas
             </p>
             <div className="grid grid-cols-2 gap-2">
+              {usr.role !== "user" && (
               <Button variant="outline" className="gap-2 justify-start" onClick={() => { router.push(`/profile/${usr.id}`); onClose() }}>
                 <ExternalLink className="h-4 w-4" />Ver perfil público
               </Button>
-              <Button variant="outline" className="gap-2 justify-start" onClick={() => { router.push(`/messaging?userId=${usr.id}`); onClose() }}>
+              )}
+              <Button variant="outline" className={`gap-2 justify-start ${usr.role === "user" ? "col-span-2" : ""}`} onClick={() => { router.push(`/messaging?userId=${usr.id}`); onClose() }}>
                 <MessageSquare className="h-4 w-4" />Enviar mensaje
               </Button>
               {isActive ? (

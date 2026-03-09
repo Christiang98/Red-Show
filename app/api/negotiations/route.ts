@@ -254,12 +254,17 @@ export async function POST(request: NextRequest) {
            last_action_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [userId, bookingId],
       )
+      // Si la solicitud viene de un usuario común, quien acepta paga la comisión
+      const senderIsUser = booking.sender_role === "user"
+      const commissionMsg = senderIsUser
+        ? `${actorName} aceptó la solicitud "${booking.title}". Como quien acepta la solicitud de un Usuario Común, deberás abonar la tarifa de gestión ($4.200) para confirmar.`
+        : `${actorName} aceptó la propuesta "${booking.title}". El local puede confirmar abonando la tarifa de gestión ($4.200).`
       for (const uid of [booking.artist_id, booking.owner_id]) {
         await runAsync(
           `INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
            VALUES (?, ?, ?, ?, ?, ?)`,
           [uid, "booking_accepted", "¡Acuerdo alcanzado! — Confirmar y pagar",
-           `${actorName} aceptó la propuesta "${booking.title}". El local puede confirmar abonando la tarifa de gestión ($4.200).`,
+           commissionMsg,
            bookingId, "booking"],
         )
       }

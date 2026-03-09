@@ -98,7 +98,9 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, 'pending', 0)`,
       [artistId, ownerId, eventId, title, description, normalizedDate, price, price,
        eventTime, eventTimeEnd ?? null, senderName, senderImage, senderRole,
-       senderRole === "artist" ? artistId : ownerId],  // last_action_by = sender
+       // Si el sender es 'user', last_action_by apunta al dueño (ownerId) o artista según corresponda
+       // En realidad usamos el id del usuario que hace la request — mantenemos compatibilidad
+       senderRole === "artist" ? artistId : senderRole === "user" ? (ownerId || artistId) : ownerId],  // last_action_by = sender
     )
 
     // Registrar propuesta inicial en historial
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO booking_negotiations
         (booking_id, user_id, action_type, price, new_date, new_time, new_time_end)
        VALUES (?, ?, 'initial_proposal', ?, ?, ?, ?)`,
-      [result.id, senderRole === "artist" ? artistId : ownerId,
+      [result.id, senderRole === "artist" ? artistId : senderRole === "user" ? (ownerId || artistId) : ownerId,
        price, normalizedDate, eventTime, eventTimeEnd ?? null],
     )
 
@@ -114,7 +116,8 @@ export async function POST(request: NextRequest) {
     const owner  = await getAsync("SELECT first_name, last_name FROM users WHERE id = ?", [ownerId])
     const artistName = artist ? `${artist.first_name} ${artist.last_name}` : "Usuario"
     const ownerName  = owner  ? `${owner.first_name} ${owner.last_name}`   : "Usuario"
-    const receiverId = senderRole === "artist" ? ownerId : artistId
+    // Si el sender es 'user', notificar tanto al artista como al dueño si aplica
+    const receiverId = senderRole === "artist" ? ownerId : senderRole === "user" ? (artistId || ownerId) : artistId
     const finalSenderName = senderRole === "artist" ? (senderName || artistName) : (senderName || ownerName)
 
     await runAsync(
