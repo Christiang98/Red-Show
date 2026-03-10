@@ -1385,35 +1385,41 @@ export default function AdminPanel() {
               </div>
 
               {/* Info Dueño */}
-              {detailsModal.user.role === 'owner' && detailsModal.user.owner_profile && (
+              {detailsModal.user.role === 'owner' && (
                 <div>
                   <h4 className="text-white font-bold mb-3 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-400" />
+                    <CheckCircle className="h-5 w-5 text-blue-400" />
                     Información del Local
                   </h4>
                   <div className="p-4 rounded-xl space-y-3" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <div>
                       <p className="text-white/50 text-xs mb-1">Nombre del Establecimiento</p>
-                      <p className="text-white font-semibold">{detailsModal.user.owner_profile.business_name || "No especificado"}</p>
+                      <p className="text-white font-semibold">{detailsModal.user.owner_profile?.business_name || "No especificado"}</p>
                     </div>
                     <div>
-                      <p className="text-white/50 text-xs mb-1">Tipo</p>
-                      <p className="text-white font-semibold">{detailsModal.user.owner_profile.venue_type || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <p className="text-white/50 text-xs mb-1">Dirección</p>
-                      <p className="text-white font-semibold">{detailsModal.user.owner_profile.address || "No especificada"}</p>
+                      <p className="text-white/50 text-xs mb-1">Tipo de Negocio</p>
+                      <p className="text-white font-semibold">
+                        {(detailsModal.user.owner_profile?.business_type === "otro" || detailsModal.user.owner_profile?.business_type === "other")
+                          ? (detailsModal.user.owner_profile?.other_business_type || "Otro")
+                          : (detailsModal.user.owner_profile?.business_type || "No especificado")}
+                      </p>
                     </div>
                     <div>
                       <p className="text-white/50 text-xs mb-1">Capacidad</p>
-                      <p className="text-white font-semibold">{detailsModal.user.owner_profile.capacity || "No especificada"}</p>
+                      <p className="text-white font-semibold">
+                        {detailsModal.user.owner_profile?.capacity ? `${detailsModal.user.owner_profile.capacity} personas` : "No especificada"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-white/50 text-xs mb-1">Dirección</p>
+                      <p className="text-white font-semibold">{detailsModal.user.owner_profile?.address || "No especificada"}</p>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Info Artista */}
-              {detailsModal.user.role === 'artist' && detailsModal.user.artist_profile && (
+              {detailsModal.user.role === 'artist' && (
                 <div>
                   <h4 className="text-white font-bold mb-3 flex items-center gap-2">
                     <Star className="h-5 w-5 text-purple-400" />
@@ -1422,15 +1428,19 @@ export default function AdminPanel() {
                   <div className="p-4 rounded-xl space-y-3" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <div>
                       <p className="text-white/50 text-xs mb-1">Nombre Artístico</p>
-                      <p className="text-white font-semibold">{detailsModal.user.artist_profile.stage_name || "No especificado"}</p>
+                      <p className="text-white font-semibold">{detailsModal.user.artist_profile?.stage_name || "No especificado"}</p>
                     </div>
                     <div>
                       <p className="text-white/50 text-xs mb-1">Categoría</p>
-                      <p className="text-white font-semibold">{detailsModal.user.artist_profile.category || "No especificado"}</p>
+                      <p className="text-white font-semibold">
+                        {(detailsModal.user.artist_profile?.category === "otro" || detailsModal.user.artist_profile?.category === "other")
+                          ? (detailsModal.user.artist_profile?.other_category || "Otro")
+                          : (detailsModal.user.artist_profile?.category || "No especificado")}
+                      </p>
                     </div>
                     <div>
                       <p className="text-white/50 text-xs mb-1">Años de Experiencia</p>
-                      <p className="text-white font-semibold">{detailsModal.user.artist_profile.experience_years || "No especificado"}</p>
+                      <p className="text-white font-semibold">{detailsModal.user.artist_profile?.experience_years || "No especificado"}</p>
                     </div>
                   </div>
                 </div>

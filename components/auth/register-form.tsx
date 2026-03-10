@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { PasswordStrengthIndicator } from "@/components/auth/password-strength-indicator"
 import { validatePassword } from "@/lib/password-validator"
+import { Eye, EyeOff } from "lucide-react"
 
 type UserRole = "owner" | "artist" | "user"
 
@@ -18,6 +19,8 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -210,26 +213,48 @@ export function RegisterForm() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Contraseña</label>
-              <Input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="••••••••"
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <PasswordStrengthIndicator password={formData.password} />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Confirmar Contraseña</label>
-              <Input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="••••••••"
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 

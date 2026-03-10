@@ -343,7 +343,11 @@ function UserModal({
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-0.5">Tipo de artista</p>
-                  <p className="font-semibold text-foreground">{usr.artist_category || "—"}</p>
+                  <p className="font-semibold text-foreground">
+                    {(usr.artist_category === "otro" || usr.artist_category === "other")
+                      ? (usr.artist_other_category || "Otro")
+                      : (usr.artist_category || "—")}
+                  </p>
                 </div>
                 {usr.artist_experience_years != null && (
                   <div>
@@ -372,20 +376,24 @@ function UserModal({
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-0.5">Tipo de venue</p>
-                  <p className="font-semibold text-foreground">{usr.business_type || "—"}</p>
+                  <p className="font-semibold text-foreground">
+                    {(usr.business_type === "otro" || usr.business_type === "other")
+                      ? (usr.owner_other_business_type || "Otro")
+                      : (usr.business_type || "—")}
+                  </p>
                 </div>
+                {usr.owner_capacity != null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Capacidad</p>
+                    <p className="font-semibold text-foreground">{usr.owner_capacity} personas</p>
+                  </div>
+                )}
                 {(usr.owner_address || usr.owner_city) && (
                   <div className="col-span-2">
                     <p className="text-xs text-muted-foreground mb-0.5">Dirección completa</p>
                     <p className="font-semibold text-foreground">
                       {[usr.owner_address, usr.owner_neighborhood, usr.owner_city].filter(Boolean).join(", ") || "—"}
                     </p>
-                  </div>
-                )}
-                {usr.owner_capacity != null && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Capacidad</p>
-                    <p className="font-semibold text-foreground">{usr.owner_capacity} personas</p>
                   </div>
                 )}
               </div>

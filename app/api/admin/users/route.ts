@@ -11,14 +11,18 @@ export async function GET() {
     try { await runQuery("ALTER TABLE users ADD COLUMN sanction_reason TEXT", []) } catch { /* ya existe */ }
     try { await runQuery("ALTER TABLE users ADD COLUMN sanction_start DATETIME", []) } catch { /* ya existe */ }
     try { await runQuery("ALTER TABLE users ADD COLUMN sanction_end DATETIME", []) } catch { /* ya existe */ }
+    try { await runQuery("ALTER TABLE artist_profiles ADD COLUMN other_category TEXT DEFAULT ''", []) } catch { /* ya existe */ }
+    try { await runQuery("ALTER TABLE owner_profiles ADD COLUMN other_business_type TEXT DEFAULT ''", []) } catch { /* ya existe */ }
 
     const users = await allQuery(
       `SELECT 
         u.*,
         p.bio, p.location, p.rating, p.verified, p.phone as profile_phone,
         ap.stage_name as artist_name, ap.category as artist_category, ap.is_published as artist_published,
+        ap.other_category as artist_other_category,
         COALESCE(ap.experience_years, ap.years_of_experience) as artist_experience_years,
         op.business_name, op.business_type, op.is_published as owner_published,
+        op.other_business_type as owner_other_business_type,
         op.address as owner_address, op.city as owner_city, op.neighborhood as owner_neighborhood,
         op.capacity as owner_capacity,
         ROUND(COALESCE(AVG(r.rating), 0), 1) as avg_rating,

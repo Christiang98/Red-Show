@@ -1,27 +1,28 @@
 "use client"
 
 import { PublicProfileView } from "@/components/profile/public-profile-view"
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 
-export default function ProfilePage({ params }: { params: { id: string } }) {
+export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const [profileData, setProfileData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isOwner, setIsOwner] = useState(false)
 
   useEffect(() => {
     loadProfile()
-  }, [params.id])
+  }, [id])
 
   const loadProfile = async () => {
     try {
-      const response = await fetch(`/api/profiles?userId=${params.id}`)
+      const response = await fetch(`/api/profiles?userId=${id}`)
       const data = await response.json()
 
       // Cargar reseñas reales
       let reviewsData: any[] = []
       try {
-        const reviewsRes = await fetch(`/api/reviews?userId=${params.id}`)
+        const reviewsRes = await fetch(`/api/reviews?userId=${id}`)
         if (reviewsRes.ok) {
           reviewsData = await reviewsRes.json()
         }
@@ -154,7 +155,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
   // Funcion para obtener label del tipo de negocio
   const getBusinessTypeLabel = (type: string, otherType?: string) => {
-    if (type === "other" && otherType) {
+    if ((type === "other" || type === "otro") && otherType) {
       return otherType
     }
     const types: Record<string, string> = {
@@ -166,13 +167,14 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       club: "Club/Discoteca",
       hotel: "Hotel/Salon de Hotel",
       other: "Otro",
+      otro: "Otro",
     }
     return types[type] || type
   }
 
   // Funcion para obtener label de categoria de artista
   const getCategoryLabel = (category: string, otherCategory?: string) => {
-    if (category === "other" && otherCategory) {
+    if ((category === "other" || category === "otro") && otherCategory) {
       return otherCategory
     }
     const categories: Record<string, string> = {
@@ -185,6 +187,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       gastronomy: "Gastronomico/Catering",
       decorator: "Decorador",
       other: "Otro",
+      otro: "Otro",
     }
     return categories[category] || category
   }
@@ -229,5 +232,5 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
     )
   }
 
-  return <PublicProfileView type={isOwner ? "owner" : "artist"} data={profileData} userId={params.id} />
+  return <PublicProfileView type={isOwner ? "owner" : "artist"} data={profileData} userId={id} />
 }

@@ -10,6 +10,8 @@ async function ensureUserColumns() {
     "ALTER TABLE users ADD COLUMN sanction_reason TEXT",
     "ALTER TABLE users ADD COLUMN sanction_start DATETIME",
     "ALTER TABLE users ADD COLUMN sanction_end DATETIME",
+    "ALTER TABLE artist_profiles ADD COLUMN other_category TEXT DEFAULT ''",
+    "ALTER TABLE owner_profiles ADD COLUMN other_business_type TEXT DEFAULT ''",
   ]
   for (const sql of migrations) {
     try { await runAsync(sql, []) } catch { /* columna ya existe, ignorar */ }
@@ -77,11 +79,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Perfil de artista — columnas opcionales consultadas de forma segura
     let artistProfile = null
     if (user.role === "artist") {
+      // First try with other_category, fall back without it if column doesn't exist
       try {
         artistProfile = await getAsync(
           `SELECT
              stage_name,
              COALESCE(category, "") AS category,
+             COALESCE(other_category, "") AS other_category,
              COALESCE(experience_years, years_of_experience, 0) AS experience_years,
              COALESCE(bio, description, "") AS bio,
              COALESCE(is_published, 0) AS is_published
@@ -90,7 +94,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           [userId]
         )
       } catch {
-        artistProfile = null
+        try {
+          artistProfile = await getAsync(
+            `SELECT
+               stage_name,
+               COALESCE(category, "") AS category,
+               "" AS other_category,
+               COALESCE(experience_years, years_of_experience, 0) AS experience_years,
+               COALESCE(bio, description, "") AS bio,
+               COALESCE(is_published, 0) AS is_published
+             FROM artist_profiles
+             WHERE user_id = ?`,
+            [userId]
+          )
+        } catch { artistProfile = null }
       }
     }
 
@@ -102,18 +119,35 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           `SELECT
              business_name,
              COALESCE(business_type, "") AS business_type,
+             COALESCE(other_business_type, "") AS other_business_type,
              COALESCE(address, "")       AS address,
              COALESCE(city, "")          AS city,
              COALESCE(neighborhood, "")  AS neighborhood,
              COALESCE(capacity, 0)       AS capacity,
-             COALESCE(description, bio, "") AS description,
+             COALESCE(description, "")   AS description,
              COALESCE(is_published, 0)   AS is_published
            FROM owner_profiles
            WHERE user_id = ?`,
           [userId]
         )
       } catch {
-        ownerProfile = null
+        try {
+          ownerProfile = await getAsync(
+            `SELECT
+               business_name,
+               COALESCE(business_type, "") AS business_type,
+               "" AS other_business_type,
+               COALESCE(address, "")       AS address,
+               COALESCE(city, "")          AS city,
+               COALESCE(neighborhood, "")  AS neighborhood,
+               COALESCE(capacity, 0)       AS capacity,
+               COALESCE(description, "")   AS description,
+               COALESCE(is_published, 0)   AS is_published
+             FROM owner_profiles
+             WHERE user_id = ?`,
+            [userId]
+          )
+        } catch { ownerProfile = null }
       }
     }
 

@@ -5,14 +5,15 @@ import { AppNavbar } from "@/components/navigation/app-navbar"
 import { BookingDetail } from "@/components/bookings/booking-detail"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
-export default function BookingDetailPage({ params }: { params: { id: string } }) {
+export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: bookingId } = use(params)
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
 
@@ -21,7 +22,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
     setUser(currentUser)
   }, [])
 
-  const { data: booking, error, mutate } = useSWR(user ? `/api/bookings/${params.id}` : null, fetcher)
+  const { data: booking, error, mutate } = useSWR(user ? `/api/bookings/${bookingId}` : null, fetcher)
 
   const handleAccept = async (id: number) => {
     try {

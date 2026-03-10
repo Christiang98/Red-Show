@@ -147,7 +147,9 @@ export default function MyProfilePage() {
                   <div>
                     <p className="text-sm font-medium text-foreground mb-1">Categoría</p>
                     <p className="text-muted-foreground">
-                      {profileData.specificProfile?.category || "No especificado"}
+                      {(profileData.specificProfile?.category === "otro" || profileData.specificProfile?.category === "other")
+                        ? (profileData.specificProfile?.other_category || "Otro")
+                        : (profileData.specificProfile?.category || "No especificado")}
                     </p>
                   </div>
                   <div>
@@ -176,7 +178,9 @@ export default function MyProfilePage() {
                   <div>
                     <p className="text-sm font-medium text-foreground mb-1">Tipo de Negocio</p>
                     <p className="text-muted-foreground">
-                      {profileData.specificProfile?.business_type || "No especificado"}
+                      {(profileData.specificProfile?.business_type === "otro" || profileData.specificProfile?.business_type === "other")
+                        ? (profileData.specificProfile?.other_business_type || "Otro")
+                        : (profileData.specificProfile?.business_type || "No especificado")}
                     </p>
                   </div>
                   <div>
